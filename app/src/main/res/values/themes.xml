@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.MtzInstaller" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/cream</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+    <color name="cream">#F4EFE9</color>
+</resources>

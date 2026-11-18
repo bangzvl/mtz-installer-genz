@@ -49,10 +49,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     var selectedId by mutableStateOf<String?>(null)
 
-    /** Diisi path file jika aplikasi Tema tidak bisa dipanggil otomatis. */
-    var manualHelpPath by mutableStateOf<String?>(null)
+    /** Diisi jika aplikasi Tema tidak bisa dipanggil otomatis. */
+    var manualHelp by mutableStateOf<ThemeInstaller.LaunchResult.ManualImportNeeded?>(null)
 
     val themeManagerAvailable: Boolean = ThemeInstaller.isThemeManagerAvailable(app)
+    val themeManagerVersion: String? = ThemeInstaller.themeManagerVersion(app)
+    val themeAutoApply: Boolean = ThemeInstaller.hasAutoApplyRoute(app)
 
     // ---------- Unduhan dari tab Jelajah (MiuiThemez) ----------
     /** id unduhan → progres (0..1, atau -1 jika ukuran tidak diketahui). */
@@ -132,12 +134,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             busy = "Menyiapkan tema…"
             try {
                 val ctx = getApplication<Application>()
-                val path = withContext(Dispatchers.IO) { ThemeInstaller.exportToPublic(ctx, theme) }
-                when (ThemeInstaller.launchApply(ctx, path)) {
-                    ThemeInstaller.LaunchResult.Launched ->
+                val exported = withContext(Dispatchers.IO) { ThemeInstaller.exportToPublic(ctx, theme) }
+                when (val r = ThemeInstaller.launchApply(ctx, exported)) {
+                    ThemeInstaller.LaunchResult.Applied ->
                         _messages.tryEmit("Membuka Tema untuk menerapkan \"${theme.title}\"")
-                    ThemeInstaller.LaunchResult.ManualImportNeeded ->
-                        manualHelpPath = path
+                    is ThemeInstaller.LaunchResult.HandedOff ->
+                        _messages.tryEmit("File diteruskan ke ${r.via}. Pilih aplikasi Tema lalu ketuk Terapkan")
+                    is ThemeInstaller.LaunchResult.ManualImportNeeded ->
+                        manualHelp = r
                 }
                 val now = System.currentTimeMillis()
                 update { list ->

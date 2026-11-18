@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -45,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtzinstaller.app.data.ThemeInstaller
 import com.mtzinstaller.app.ui.components.FloatingNavBar
 import com.mtzinstaller.app.ui.components.NavTab
+import com.mtzinstaller.app.ui.components.PillButton
 import com.mtzinstaller.app.ui.screens.BrowseScreen
 import com.mtzinstaller.app.ui.screens.CollectionScreen
 import com.mtzinstaller.app.ui.screens.HomeScreen
@@ -123,6 +127,8 @@ fun MtzApp(vm: MainViewModel) {
                 )
                 NavTab.Info -> InfoScreen(
                     themeManagerAvailable = vm.themeManagerAvailable,
+                    themeManagerVersion = vm.themeManagerVersion,
+                    autoApply = vm.themeAutoApply,
                     onOpenThemeApp = { ThemeInstaller.openThemeManager(context) },
                 )
             }
@@ -152,29 +158,60 @@ fun MtzApp(vm: MainViewModel) {
         )
     }
 
-    vm.manualHelpPath?.let { path ->
+    vm.manualHelp?.let { help ->
+        val close = { vm.manualHelp = null }
         AlertDialog(
-            onDismissRequest = { vm.manualHelpPath = null },
-            title = { Text("Pasang manual") },
+            onDismissRequest = close,
+            title = { Text("Pasang dengan 1 langkah lagi", style = MtzType.Heading) },
             text = {
-                Text(
-                    "Aplikasi Tema tidak mengizinkan pemasangan otomatis di perangkat ini.\n\n" +
-                        "File sudah disalin ke:\n$path\n\n" +
-                        "Buka aplikasi Tema → Profil → Tema → Import, lalu pilih file tersebut.",
-                )
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        "Versi aplikasi Tema di HP ini (${help.themeAppVersion ?: "tidak diketahui"}) sudah menutup " +
+                            "pemasangan otomatis dari aplikasi lain. Filenya sudah siap di folder Download/MtzInstaller. " +
+                            "Pilih salah satu cara:",
+                        style = MtzType.Body,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    HelpOption(
+                        "1. Lewat File Manager",
+                        "Buka folder MtzInstaller, ketuk file tema, pilih \"Tema\" lalu Terapkan.",
+                        "Buka folder",
+                    ) { close(); if (!ThemeInstaller.openExportFolder(context)) ThemeInstaller.openThemeManager(context) }
+                    HelpOption(
+                        "2. Lewat aplikasi Tema",
+                        "Buka Tema → Saya/Profil → Tema → Impor, lalu pilih file dari Download/MtzInstaller.",
+                        "Buka Tema",
+                    ) { close(); ThemeInstaller.openThemeManager(context) }
+                    HelpOption(
+                        "3. Kembalikan Tema ke versi bawaan",
+                        "Di info aplikasi Tema, ketuk ⋮ → Copot pemasangan pembaruan. Versi bawaan sering masih " +
+                            "mendukung pasang otomatis. Lalu coba Pasang lagi.",
+                        "Info aplikasi",
+                    ) { close(); ThemeInstaller.openThemeManagerAppInfo(context) }
+                }
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.manualHelpPath = null
-                    ThemeInstaller.openThemeManager(context)
-                }) { Text("Buka Tema", color = MtzColors.Coral) }
-            },
-            dismissButton = { TextButton(onClick = { vm.manualHelpPath = null }) { Text("Tutup", color = MtzColors.Ink) } },
+            confirmButton = { TextButton(onClick = close) { Text("Tutup", color = MtzColors.Ink) } },
             containerColor = MtzColors.Cream,
         )
     }
 
     vm.busy?.let { BusyOverlay(it) }
+}
+
+@Composable
+private fun HelpOption(title: String, body: String, action: String, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .padding(bottom = 12.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White)
+            .padding(14.dp),
+    ) {
+        Text(title, style = MtzType.Label)
+        Text(body, style = MtzType.Caption, color = MtzColors.Muted, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
+        PillButton(action, onClick, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
+    }
 }
 
 @Composable

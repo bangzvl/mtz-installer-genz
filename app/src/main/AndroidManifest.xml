@@ -7,6 +7,16 @@
     <!-- Agar bisa mendeteksi aplikasi Tema bawaan MIUI/HyperOS (Android 11+) -->
     <queries>
         <package android:name="com.android.thememanager" />
+        <package android:name="com.android.fileexplorer" />
+        <package android:name="com.mi.android.globalFileexplorer" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:mimeType="application/vnd.miui.mtz" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:mimeType="application/x-mtz" />
+        </intent>
     </queries>
 
     <application

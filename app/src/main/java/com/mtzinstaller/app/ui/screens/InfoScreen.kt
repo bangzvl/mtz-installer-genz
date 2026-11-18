@@ -29,7 +29,7 @@ import com.mtzinstaller.app.ui.theme.MtzColors
 import com.mtzinstaller.app.ui.theme.MtzType
 
 @Composable
-fun InfoScreen(themeManagerAvailable: Boolean, onOpenThemeApp: () -> Unit) {
+fun InfoScreen(themeManagerAvailable: Boolean, themeManagerVersion: String?, autoApply: Boolean, onOpenThemeApp: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -49,7 +49,10 @@ fun InfoScreen(themeManagerAvailable: Boolean, onOpenThemeApp: () -> Unit) {
             Text(if (themeManagerAvailable) "Aplikasi Tema terdeteksi ✅" else "Aplikasi Tema tidak ditemukan", style = MtzType.Title.copy(fontSize = 22.sp), color = MtzColors.Ink)
             Spacer(Modifier.height(6.dp))
             Text(
-                if (themeManagerAvailable) "Ponsel ini memiliki com.android.thememanager, jadi tema bisa diterapkan langsung."
+                if (themeManagerAvailable) {
+                    "Versi aplikasi Tema: ${themeManagerVersion ?: "?"}\n" +
+                        if (autoApply) "Pasang otomatis: didukung ✅" else "Pasang otomatis: ditutup Xiaomi di versi ini, jadi tema dipasang lewat File Manager/Impor (1 langkah tambahan)."
+                }
                 else "Fitur pasang otomatis hanya berfungsi di HP Xiaomi/Redmi/POCO dengan MIUI atau HyperOS.",
                 style = MtzType.Body,
                 color = MtzColors.Ink.copy(alpha = 0.8f),

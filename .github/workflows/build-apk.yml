@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,7 +21,17 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk MTZ-Installer-genZ.apk
       - uses: actions/upload-artifact@v4
         with:
           name: MTZ-Installer-genZ-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: MTZ-Installer-genZ.apk
+      - name: Publish to Releases
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: MTZ Installer gen Z (build terbaru)
+          body: APK terbaru. Unduh MTZ-Installer-genZ.apk lalu pasang di HP Android.
+          files: MTZ-Installer-genZ.apk
+          make_latest: true

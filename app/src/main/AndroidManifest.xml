@@ -9,6 +9,13 @@
         <package android:name="com.android.thememanager" />
         <package android:name="com.android.fileexplorer" />
         <package android:name="com.mi.android.globalFileexplorer" />
+        <package android:name="moe.shizuku.privileged.api" />
+        <package android:name="dev.glorioustr.mtzstudio" />
+        <package android:name="com.guffyapps.mtzinstallerpro" />
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="application/octet-stream" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="content" android:mimeType="application/vnd.miui.mtz" />
@@ -16,6 +23,14 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="content" android:mimeType="application/x-mtz" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:mimeType="application/zip" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:mimeType="application/octet-stream" />
         </intent>
     </queries>
 

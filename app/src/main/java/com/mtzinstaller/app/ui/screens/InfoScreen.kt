@@ -1,5 +1,16 @@
 package com.mtzinstaller.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +40,21 @@ import com.mtzinstaller.app.ui.theme.MtzColors
 import com.mtzinstaller.app.ui.theme.MtzType
 
 @Composable
-fun InfoScreen(themeManagerAvailable: Boolean, themeManagerVersion: String?, autoApply: Boolean, onOpenThemeApp: () -> Unit) {
+fun InfoScreen(
+    themeManagerAvailable: Boolean,
+    themeManagerVersion: String?,
+    autoApply: Boolean,
+    helpers: List<String>,
+    report: () -> String,
+    onOpenThemeApp: () -> Unit,
+) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    var reportText by remember { mutableStateOf<String?>(null) }
+    fun openUrl(url: String) = runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -60,6 +85,70 @@ fun InfoScreen(themeManagerAvailable: Boolean, themeManagerVersion: String?, aut
             if (themeManagerAvailable) {
                 Spacer(Modifier.height(14.dp))
                 PillButton("Buka Aplikasi Tema", onOpenThemeApp, small = true)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        InfoCard("Cek kompatibilitas HP 🩺") {
+            Text(
+                "Buat laporan berisi versi aplikasi Tema dan jalur pemasangan yang tersedia di HP ini. " +
+                    "Salin lalu kirim ke developer kalau tema belum bisa dipasang.",
+                style = MtzType.Body,
+                color = MtzColors.Ink.copy(alpha = 0.8f),
+            )
+            Spacer(Modifier.height(12.dp))
+            val r = reportText
+            if (r == null) {
+                PillButton("Buat laporan", { reportText = report() }, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
+            } else {
+                Text(
+                    r,
+                    style = MtzType.Caption.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MtzColors.Cream).padding(12.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                Row {
+                    PillButton("Salin", {
+                        clipboard.setText(AnnotatedString(r))
+                        Toast.makeText(context, "Laporan disalin", Toast.LENGTH_SHORT).show()
+                    }, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
+                    Spacer(Modifier.width(10.dp))
+                    PillButton("Bagikan", {
+                        runCatching {
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, r),
+                                    "Kirim laporan",
+                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }, small = true)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        InfoCard("Aplikasi pembantu (opsional) 🧩") {
+            Text(
+                "Di HyperOS versi baru, Xiaomi menutup pemasangan tema dari aplikasi lain. Kalau tema tetap " +
+                    "tidak bisa dipasang, pasang aplikasi pembantu berikut. Setelah itu, di detail tema ketuk " +
+                    "\"Pasang dengan aplikasi lain\" dan pilih aplikasinya.",
+                style = MtzType.Body,
+                color = MtzColors.Ink.copy(alpha = 0.8f),
+            )
+            Spacer(Modifier.height(8.dp))
+            Step(1, MtzColors.Coral, "Shizuku: memberi akses lanjutan tanpa root, dinyalakan lewat Wireless debugging (tanpa PC).")
+            Step(2, MtzColors.Lilac, "HyperOS MTZ Studio (open source): memasang .mtz memakai Shizuku atau root.")
+            Spacer(Modifier.height(8.dp))
+            Text(
+                if (helpers.isEmpty()) "Terpasang: belum ada" else "Terpasang: ${helpers.joinToString()}",
+                style = MtzType.Label,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row {
+                PillButton("Shizuku", { openUrl("https://shizuku.rikka.app/") }, small = true)
+                Spacer(Modifier.width(10.dp))
+                PillButton("MTZ Studio", { openUrl("https://github.com/GloriousApps/HyperOS-MTZ-Studio/releases") }, small = true)
             }
         }
 

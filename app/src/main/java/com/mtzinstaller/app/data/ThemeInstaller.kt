@@ -6,7 +6,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import java.io.File
@@ -166,6 +168,88 @@ object ThemeInstaller {
             ?: return false
         return start(context, miFm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
+
+    /**
+     * Serahkan file .mtz ke aplikasi pemasang lain yang terpasang di HP (mis. HyperOS MTZ Studio,
+     * HyperTheme, MTZ Installer Pro). Memakai "Buka dengan" + "Bagikan" sekaligus.
+     */
+    fun openWithOtherApp(context: Context, exported: Exported): Boolean {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_STREAM, exported.uri)
+            clipData = ClipData.newRawUri("MTZ", exported.uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val view = viewIntent(exported.uri, "application/octet-stream")
+        val chooser = Intent.createChooser(send, "Pasang dengan aplikasi lain").apply {
+            putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(view))
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        return start(context, chooser)
+    }
+
+    /** Laporan kompatibilitas yang bisa disalin pengguna untuk dianalisis. */
+    fun diagnose(context: Context): String {
+        val pm = context.packageManager
+        val sb = StringBuilder()
+        sb.appendLine("== MTZ Installer gen Z — laporan HP ==")
+        sb.appendLine("HP        : ${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})")
+        sb.appendLine("Android   : ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
+        sb.appendLine("ROM       : ${Build.VERSION.INCREMENTAL}")
+        val info = runCatching {
+            @Suppress("DEPRECATION")
+            pm.getPackageInfo(THEME_MANAGER, PackageManager.GET_ACTIVITIES)
+        }.getOrNull()
+        if (info == null) {
+            sb.appendLine("Tema      : TIDAK DITEMUKAN")
+            return sb.toString()
+        }
+        val ai = info.applicationInfo
+        val updated = ai != null && (ai.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        @Suppress("DEPRECATION")
+        val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+        sb.appendLine("Tema      : ${info.versionName} (code $code)${if (updated) " • versi update" else " • versi pabrik"}")
+        sb.appendLine()
+        sb.appendLine("-- Rute pemasangan --")
+        val tester = legacyTesterIntents(context, "/x.mtz")
+        sb.appendLine("Tester support3.0 : ${yes(tester[0].resolveActivity(pm) != null)}")
+        sb.appendLine("Tester lama       : ${yes(tester[1].resolveActivity(pm) != null)}")
+        val probe = Uri.parse("content://media/external/downloads/1")
+        MTZ_MIME_TYPES.forEach { mime ->
+            val handlers = pm.queryIntentActivities(viewIntent(probe, mime), 0).map { it.activityInfo.packageName }.distinct()
+            sb.appendLine("Buka $mime : ${handlers.ifEmpty { listOf("-") }.joinToString()}")
+        }
+        val tab = Intent().setComponent(ComponentName(THEME_MANAGER, RESOURCE_TAB_ACTIVITY))
+        sb.appendLine("Layar tema lokal  : ${yes(tab.resolveActivity(pm) != null)}")
+        sb.appendLine()
+        sb.appendLine("-- Activity Tema yang terbuka (exported) --")
+        info.activities.orEmpty()
+            .filter { it.exported }
+            .map { it.name.removePrefix("$THEME_MANAGER.") }
+            .sorted()
+            .take(60)
+            .forEach { sb.appendLine("• $it") }
+        sb.appendLine()
+        sb.appendLine("-- Aplikasi pembantu terpasang --")
+        HELPER_APPS.forEach { (pkg, label) ->
+            val v = runCatching { pm.getPackageInfo(pkg, 0).versionName }.getOrNull()
+            if (v != null) sb.appendLine("• $label $v")
+        }
+        return sb.toString()
+    }
+
+    /** Aplikasi pembantu yang dikenal (untuk deteksi & tombol "Pasang dengan aplikasi lain"). */
+    val HELPER_APPS = listOf(
+        "moe.shizuku.privileged.api" to "Shizuku",
+        "dev.glorioustr.mtzstudio" to "HyperOS MTZ Studio",
+        "com.guffyapps.mtzinstallerpro" to "MTZ Installer Pro",
+    )
+
+    fun installedHelpers(context: Context): List<String> = HELPER_APPS.mapNotNull { (pkg, label) ->
+        runCatching { context.packageManager.getPackageInfo(pkg, 0); label }.getOrNull()
+    }
+
+    private fun yes(b: Boolean) = if (b) "ADA ✅" else "tidak ada ❌"
 
     private fun legacyTesterIntents(context: Context, path: String): List<Intent> = listOf(
         // Kontrak lengkap (action support3.0 + 4 extras)

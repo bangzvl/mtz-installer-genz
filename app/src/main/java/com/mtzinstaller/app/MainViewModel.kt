@@ -51,6 +51,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Diisi jika aplikasi Tema tidak bisa dipanggil otomatis. */
     var manualHelp by mutableStateOf<ThemeInstaller.LaunchResult.ManualImportNeeded?>(null)
+    var manualHelpTheme: MtzTheme? = null
+        private set
 
     val themeManagerAvailable: Boolean = ThemeInstaller.isThemeManagerAvailable(app)
     val themeManagerVersion: String? = ThemeInstaller.themeManagerVersion(app)
@@ -140,8 +142,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         _messages.tryEmit("Membuka Tema untuk menerapkan \"${theme.title}\"")
                     is ThemeInstaller.LaunchResult.HandedOff ->
                         _messages.tryEmit("File diteruskan ke ${r.via}. Pilih aplikasi Tema lalu ketuk Terapkan")
-                    is ThemeInstaller.LaunchResult.ManualImportNeeded ->
+                    is ThemeInstaller.LaunchResult.ManualImportNeeded -> {
+                        manualHelpTheme = theme
                         manualHelp = r
+                    }
                 }
                 val now = System.currentTimeMillis()
                 update { list ->
@@ -156,6 +160,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    /** Serahkan tema ke aplikasi pemasang lain (MTZ Studio, HyperTheme, dll). */
+    fun installWithOtherApp(theme: MtzTheme) {
+        if (busy != null) return
+        viewModelScope.launch {
+            busy = "Menyiapkan file…"
+            try {
+                val ctx = getApplication<Application>()
+                val exported = withContext(Dispatchers.IO) { ThemeInstaller.exportToPublic(ctx, theme) }
+                if (!ThemeInstaller.openWithOtherApp(ctx, exported)) {
+                    _messages.tryEmit("Belum ada aplikasi pemasang lain di HP ini")
+                }
+            } catch (e: Exception) {
+                _messages.tryEmit("Gagal menyiapkan file: ${e.localizedMessage ?: e.javaClass.simpleName}")
+            } finally {
+                busy = null
+            }
+        }
+    }
+
+    fun diagnosticsReport(): String = ThemeInstaller.diagnose(getApplication())
+
+    fun installedHelpers(): List<String> = ThemeInstaller.installedHelpers(getApplication())
 
     fun toggleFavorite(theme: MtzTheme) {
         update { list -> list.map { if (it.id == theme.id) it.copy(favorite = !it.favorite) else it } }

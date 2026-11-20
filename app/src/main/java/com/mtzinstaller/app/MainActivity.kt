@@ -129,6 +129,8 @@ fun MtzApp(vm: MainViewModel) {
                     themeManagerAvailable = vm.themeManagerAvailable,
                     themeManagerVersion = vm.themeManagerVersion,
                     autoApply = vm.themeAutoApply,
+                    helpers = vm.installedHelpers(),
+                    report = vm::diagnosticsReport,
                     onOpenThemeApp = { ThemeInstaller.openThemeManager(context) },
                 )
             }
@@ -153,6 +155,7 @@ fun MtzApp(vm: MainViewModel) {
             busy = vm.busy != null,
             onDismiss = { vm.selectedId = null },
             onInstall = { vm.install(theme) },
+            onInstallOther = { vm.installWithOtherApp(theme) },
             onToggleFavorite = { vm.toggleFavorite(theme) },
             onDelete = { vm.delete(theme) },
         )
@@ -188,6 +191,12 @@ fun MtzApp(vm: MainViewModel) {
                             "mendukung pasang otomatis. Lalu coba Pasang lagi.",
                         "Info aplikasi",
                     ) { close(); ThemeInstaller.openThemeManagerAppInfo(context) }
+                    HelpOption(
+                        "4. Pakai aplikasi pemasang lain",
+                        "Kalau kamu memasang aplikasi pembantu (mis. HyperOS MTZ Studio + Shizuku), " +
+                            "tema bisa langsung diserahkan ke sana. Panduannya ada di tab Info.",
+                        "Pilih aplikasi",
+                    ) { close(); vm.manualHelpTheme?.let(vm::installWithOtherApp) }
                 }
             },
             confirmButton = { TextButton(onClick = close) { Text("Tutup", color = MtzColors.Ink) } },

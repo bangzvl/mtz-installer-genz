@@ -50,6 +50,7 @@ fun ThemeDetailSheet(
     busy: Boolean,
     onDismiss: () -> Unit,
     onInstall: () -> Unit,
+    onInstallOther: () -> Unit,
     onToggleFavorite: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -100,6 +101,16 @@ fun ThemeDetailSheet(
                 Spacer(Modifier.width(8.dp))
                 CircleIconButton(Icons.Filled.Delete, "Hapus", { confirmDelete = true }, tint = MtzColors.Muted, size = 54.dp)
             }
+            Spacer(Modifier.height(14.dp))
+            PillButton(
+                "Pasang dengan aplikasi lain ↗",
+                onInstallOther,
+                Modifier.fillMaxWidth(),
+                container = Color.White,
+                content = MtzColors.Ink,
+                small = true,
+                enabled = !busy,
+            )
         }
     }
 

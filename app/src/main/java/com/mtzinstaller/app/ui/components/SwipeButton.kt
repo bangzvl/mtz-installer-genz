@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -54,6 +55,9 @@ import kotlin.math.roundToInt
 fun SwipeButton(text: String, onComplete: () -> Unit, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     val offset = remember { Animatable(0f) }
+    // Selalu pakai aksi terbaru (mis. "Lanjut" di halaman 1–2, "Masuk" di halaman 3).
+    // Tanpa ini, gesture yang dibuat sekali akan terus memanggil aksi dari halaman pertama.
+    val latestOnComplete by rememberUpdatedState(onComplete)
     val hint = rememberInfiniteTransition(label = "hint")
     val shimmer by hint.animateFloat(0f, 1f, infiniteRepeatable(tween(1600), RepeatMode.Restart), label = "shimmer")
     val thumb = 52.dp
@@ -103,7 +107,7 @@ fun SwipeButton(text: String, onComplete: () -> Unit, modifier: Modifier = Modif
                             scope.launch {
                                 if (offset.value > maxPx * 0.7f) {
                                     offset.animateTo(maxPx, tween(120))
-                                    onComplete()
+                                    latestOnComplete()
                                     offset.snapTo(0f)
                                 } else {
                                     offset.animateTo(0f, spring(dampingRatio = 0.55f))

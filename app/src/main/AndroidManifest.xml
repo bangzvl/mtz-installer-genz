@@ -4,11 +4,15 @@
     <!-- Untuk memuat katalog & mengunduh tema dari tab Jelajah -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Opsional: hanya diminta jika pengguna memilih cara "temp.mtz di root" -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
     <!-- Agar bisa mendeteksi aplikasi Tema bawaan MIUI/HyperOS (Android 11+) -->
     <queries>
         <package android:name="com.android.thememanager" />
         <package android:name="com.android.fileexplorer" />
         <package android:name="com.mi.android.globalFileexplorer" />
+        <package android:name="com.google.android.apps.nbu.files" />
         <package android:name="moe.shizuku.privileged.api" />
         <package android:name="com.xiaomi.mipicks" />
         <package android:name="com.android.vending" />

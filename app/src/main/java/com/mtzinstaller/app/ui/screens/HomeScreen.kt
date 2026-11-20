@@ -1,7 +1,13 @@
 package com.mtzinstaller.app.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.res.painterResource
 import com.mtzinstaller.app.R
 import androidx.compose.foundation.border
@@ -89,16 +95,50 @@ fun HomeScreen(
             }
         }
 
-        // Kartu sorotan (tema terbaru, besar)
-        themes.firstOrNull()?.let { spot ->
+        // Kartu sorotan — bisa digeser (hingga 5 tema terbaru) + geser otomatis
+        if (themes.isNotEmpty()) {
             item {
-                SpotlightCard(
-                    spot,
-                    onOpen = { onOpen(spot) },
-                    onInstall = { onInstall(spot) },
-                    onToggleFavorite = { onToggleFavorite(spot) },
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
-                )
+                val spots = themes.take(5)
+                val pager = rememberPagerState { spots.size }
+                LaunchedEffect(spots.size) {
+                    while (spots.size > 1) {
+                        delay(4500)
+                        if (!pager.isScrollInProgress) {
+                            pager.animateScrollToPage((pager.currentPage + 1) % spots.size)
+                        }
+                    }
+                }
+                Column(Modifier.padding(bottom = 16.dp)) {
+                    HorizontalPager(
+                        pager,
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        pageSpacing = 12.dp,
+                        key = { spots[it].id },
+                    ) { i ->
+                        val spot = spots[i]
+                        SpotlightCard(
+                            spot,
+                            onOpen = { onOpen(spot) },
+                            onInstall = { onInstall(spot) },
+                            onToggleFavorite = { onToggleFavorite(spot) },
+                            modifier = Modifier.padding(vertical = 6.dp),
+                        )
+                    }
+                    if (spots.size > 1) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            spots.indices.forEach { i ->
+                                val w by animateDpAsState(if (i == pager.currentPage) 22.dp else 7.dp, label = "spotDot")
+                                Box(
+                                    Modifier.padding(horizontal = 3.dp).height(7.dp).width(w).clip(CircleShape)
+                                        .background(if (i == pager.currentPage) MtzColors.Blue else MtzColors.BlueSoft.copy(alpha = 0.5f)),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -161,7 +201,7 @@ fun HomeScreen(
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    items(themes.drop(1).ifEmpty { themes }.take(10), key = { it.id }) { theme ->
+                    items(themes.take(10), key = { it.id }) { theme ->
                         FeatureCard(theme, onOpen = { onOpen(theme) }, onToggleFavorite = { onToggleFavorite(theme) })
                     }
                 }

@@ -224,10 +224,12 @@ fun MtzApp(vm: MainViewModel) {
                         ) { close(); vm.showRevertGuide = true }
                     }
                     HelpOption(
-                        "1. Lewat File Manager",
-                        "Buka folder MtzInstaller, ketuk file tema, pilih \"Tema\" lalu Terapkan.",
-                        "Buka folder",
-                    ) { close(); if (!ThemeInstaller.openExportFolder(context)) ThemeInstaller.openThemeManager(context) }
+                        "1. Lewat File Manager (temp.mtz)",
+                        "Aplikasi Tema di sebagian HP meminta file bernama temp.mtz di penyimpanan utama. " +
+                            "Ketuk tombol di bawah: filenya kami siapkan otomatis (sekali izinkan \"Akses semua file\"), " +
+                            "lalu di File Manager ketuk temp.mtz → Tema → Terapkan.",
+                        "Siapkan temp.mtz",
+                    ) { close(); vm.manualHelpTheme?.let(vm::prepareRootTemp) }
                     HelpOption(
                         "2. Lewat aplikasi Tema",
                         "Buka Tema → Saya/Profil → Tema → Impor, lalu pilih file dari Download/MtzInstaller.",
@@ -278,6 +280,7 @@ fun MtzApp(vm: MainViewModel) {
             step = p.step,
             done = p.done,
             failed = p.failed,
+            hint = if (vm.themeAutoApply) "Sebentar lagi Xiaomi menampilkan layar hitam \"mode debugging\". Itu normal, tema sedang diterapkan. Tekan kembali untuk lanjut." else null,
         )
     }
     vm.busy?.let { SoftBusyOverlay(it) }

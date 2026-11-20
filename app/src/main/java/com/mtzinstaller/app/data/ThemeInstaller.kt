@@ -148,18 +148,8 @@ object ThemeInstaller {
             }
         }
 
-        // 3) File Manager Xiaomi bisa meneruskan file .mtz ke importer Tema
-        val fm = viewIntent(exported.uri, "application/vnd.miui.mtz")
-        val fmTargets = pm.queryIntentActivities(fm, 0).filter { it.activityInfo.packageName != THEME_MANAGER }
-        if (fmTargets.isNotEmpty()) {
-            val target = fmTargets.first().activityInfo
-            if (fmTargets.size == 1) {
-                fm.setClassName(target.packageName, target.name)
-                if (start(context, fm)) return LaunchResult.HandedOff("File Manager")
-            } else if (start(context, Intent.createChooser(fm, "Buka tema dengan").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
-                return LaunchResult.HandedOff("File Manager")
-            }
-        }
+        // (Rute File Manager tidak lagi dijalankan otomatis: di beberapa HP ia membuka pemilih
+        //  aplikasi acak / meminta "temp.mtz" di root. Sekarang jadi pilihan manual yang dipandu.)
 
         // 4) Tidak ada rute otomatis
         return LaunchResult.ManualImportNeeded(
@@ -211,6 +201,37 @@ object ThemeInstaller {
             ?: context.packageManager.getLaunchIntentForPackage("com.android.vending")
             ?: return false
         return start(context, i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    // ---------- temp.mtz di root (diminta oleh importer Tema di sebagian versi) ----------
+
+    /** True jika aplikasi punya izin "Akses semua file" (dibutuhkan untuk menulis ke root penyimpanan). */
+    fun hasAllFilesAccess(): Boolean = Environment.isExternalStorageManager()
+
+    /** Membuka halaman izin "Akses semua file" untuk aplikasi ini. */
+    fun requestAllFilesAccess(context: Context): Boolean =
+        start(
+            context,
+            Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        ) || start(context, Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+
+    /** Menyalin tema ke /sdcard/temp.mtz (butuh izin Akses semua file). */
+    fun writeRootTemp(theme: MtzTheme): String {
+        @Suppress("DEPRECATION")
+        val target = File(Environment.getExternalStorageDirectory(), "temp.mtz")
+        File(theme.filePath).copyTo(target, overwrite = true)
+        return target.absolutePath
+    }
+
+    /** Membuka File Manager Xiaomi di halaman utama penyimpanan (tempat temp.mtz). */
+    fun openFileManager(context: Context): Boolean {
+        val pm = context.packageManager
+        val fm = pm.getLaunchIntentForPackage("com.mi.android.globalFileexplorer")
+            ?: pm.getLaunchIntentForPackage("com.android.fileexplorer")
+            ?: pm.getLaunchIntentForPackage("com.google.android.apps.nbu.files")
+            ?: return false
+        return start(context, fm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     /** Membuka File Manager di folder Download/MtzInstaller (best effort). */

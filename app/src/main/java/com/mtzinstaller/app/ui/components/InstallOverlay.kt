@@ -73,6 +73,7 @@ fun InstallOverlay(
     step: Int,
     done: Boolean,
     failed: Boolean,
+    hint: String? = null,
 ) {
     val infinite = rememberInfiniteTransition(label = "install")
     val angle by infinite.animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "ring")
@@ -188,6 +189,17 @@ fun InstallOverlay(
                         else -> 0                        // menunggu
                     }
                     StepRow(label, state)
+                }
+                if (hint != null && step >= 1 && !failed) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MtzColors.Lime).padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("💡", style = MtzType.Label)
+                        Spacer(Modifier.width(10.dp))
+                        Text(hint, style = MtzType.Caption, color = MtzColors.Ink)
+                    }
                 }
             }
         }
@@ -364,7 +376,8 @@ fun InstalledSuccessCard(
                     Text("Tema terpasang! 🎉", style = MtzType.Title, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "\"$title\" sudah dikirim ke aplikasi Tema. Kalau tampilan HP belum berubah, buka Tema lalu ketuk Terapkan.",
+                        "\"$title\" sudah diterapkan lewat mode uji Xiaomi. Di HP tanpa root, Xiaomi bisa " +
+                            "mengembalikan tema bawaan setelah beberapa saat. Pasang lagi kapan saja dari Koleksi, cukup 1 ketukan.",
                         style = MtzType.Body,
                         color = MtzColors.Muted,
                         textAlign = TextAlign.Center,

@@ -155,8 +155,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var awaitingReturnFor: MtzTheme? = null
     var successTheme by mutableStateOf<MtzTheme?>(null)
 
+    /** Tema yang menunggu izin "Akses semua file" untuk dibuatkan temp.mtz. */
+    private var pendingRootTemp: MtzTheme? = null
+
+    fun prepareRootTemp(theme: MtzTheme) {
+        val ctx = getApplication<Application>()
+        if (!ThemeInstaller.hasAllFilesAccess()) {
+            pendingRootTemp = theme
+            ThemeInstaller.requestAllFilesAccess(ctx)
+            _messages.tryEmit("Nyalakan \"Izinkan akses untuk mengelola semua file\", lalu kembali ke aplikasi")
+            return
+        }
+        viewModelScope.launch {
+            busy = "Menyiapkan temp.mtz…"
+            try {
+                withContext(Dispatchers.IO) { ThemeInstaller.writeRootTemp(theme) }
+                ThemeInstaller.openFileManager(ctx)
+                _messages.tryEmit("temp.mtz siap di penyimpanan utama. Ketuk file itu lalu pilih Tema")
+            } catch (e: Exception) {
+                _messages.tryEmit("Gagal menyiapkan temp.mtz: ${e.localizedMessage ?: e.javaClass.simpleName}")
+            } finally {
+                busy = null
+            }
+        }
+    }
+
     fun onAppResumed() {
         refreshThemeStatus()
+        pendingRootTemp?.let {
+            if (ThemeInstaller.hasAllFilesAccess()) {
+                pendingRootTemp = null
+                prepareRootTemp(it)
+            }
+        }
         awaitingReturnFor?.let {
             successTheme = _themes.value.firstOrNull { t -> t.id == it.id } ?: it
             awaitingReturnFor = null
@@ -207,9 +238,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 delay(500) // beri waktu animasi tampil
                 val exported = withContext(Dispatchers.IO) { ThemeInstaller.exportToPublic(ctx, theme) }
                 installProgress = InstallProgress(theme, 1)
-                delay(450)
+                delay(if (themeAutoApply) 1100 else 450)
                 installProgress = InstallProgress(theme, 2)
-                delay(350)
+                delay(if (themeAutoApply) 1300 else 350)
                 val r = ThemeInstaller.launchApply(ctx, exported)
                 val ok = r !is ThemeInstaller.LaunchResult.ManualImportNeeded
                 installProgress = InstallProgress(theme, 3, done = ok, failed = !ok)

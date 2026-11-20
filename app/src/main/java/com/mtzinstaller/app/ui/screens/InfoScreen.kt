@@ -11,6 +11,12 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,33 +117,25 @@ fun InfoScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-        // Cek kompatibilitas — versi simpel: satu status + satu tombol
-        Row(
-            Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp)).padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        // Cek kompatibilitas — hanya daftar centang (tahan lama kartu untuk menyalin laporan teknis)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .glass(RoundedCornerShape(24.dp))
+                .pointerInput(Unit) {
+                    detectTapGestures(onLongPress = {
+                        clipboard.setText(AnnotatedString(report()))
+                        Toast.makeText(context, "Laporan teknis disalin", Toast.LENGTH_SHORT).show()
+                    })
+                }
+                .padding(18.dp),
         ) {
-            Box(
-                Modifier.size(46.dp).clip(RoundedCornerShape(15.dp))
-                    .background(if (autoApply) MtzColors.Mint.copy(alpha = 0.2f) else MtzColors.Sun.copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center,
-            ) { Text(if (autoApply) "✅" else "🩺", fontSize = 22.sp) }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Cek kompatibilitas", style = MtzType.Label)
-                Text(
-                    when {
-                        !themeManagerAvailable -> "Aplikasi Tema tidak ditemukan"
-                        autoApply -> "HP siap memasang tema"
-                        else -> "Perlu setup sekali"
-                    },
-                    style = MtzType.Caption,
-                    color = MtzColors.Muted,
-                )
-            }
-            PillButton("Salin laporan", {
-                clipboard.setText(AnnotatedString(report()))
-                Toast.makeText(context, "Laporan disalin, tinggal tempel ke chat", Toast.LENGTH_SHORT).show()
-            }, small = true, container = MtzColors.Lime, content = MtzColors.Blue)
+            Text("Cek kompatibilitas", style = MtzType.Heading)
+            Spacer(Modifier.height(10.dp))
+            CheckItem(themeManagerAvailable, "Aplikasi Tema terdeteksi", themeManagerVersion?.let { "Versi $it" } ?: "Tidak ditemukan")
+            CheckItem(autoApply, if (autoApply) "Pasang otomatis didukung" else "Pasang otomatis terkunci", if (autoApply) "Siap memasang tema" else "Ketuk \"Buka kunci\" di atas, cukup sekali")
+            CheckItem(true, "Penyimpanan siap", "Tema disalin ke Download/MtzInstaller")
+            CheckItem(true, "Android ${android.os.Build.VERSION.RELEASE} didukung", "MTZ Installer gen Z kompatibel")
         }
 
         Spacer(Modifier.height(16.dp))
@@ -183,6 +181,31 @@ fun InfoScreen(
                 style = MtzType.Body,
                 color = MtzColors.Ink.copy(alpha = 0.8f),
             )
+        }
+    }
+}
+
+@Composable
+private fun CheckItem(ok: Boolean, title: String, subtitle: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(30.dp)
+                .neo(RoundedCornerShape(10.dp), offset = 2.dp, shadow = if (ok) MtzColors.Mint else MtzColors.Sun)
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    if (ok) Brush.linearGradient(listOf(Color(0xFF7BE6C2), MtzColors.Mint))
+                    else Brush.linearGradient(listOf(Color(0xFFFFDD85), MtzColors.Sun)),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (ok) Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(19.dp))
+            else Text("!", style = MtzType.Label.copy(fontWeight = FontWeight.Black), color = Color.White)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MtzType.Label)
+            Text(subtitle, style = MtzType.Caption, color = MtzColors.Muted)
         }
     }
 }

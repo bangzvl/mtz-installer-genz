@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.mtzinstaller.app.R
-import com.mtzinstaller.app.ui.components.CtaButton
+import com.mtzinstaller.app.ui.components.SwipeButton
 import com.mtzinstaller.app.ui.components.neo
 import com.mtzinstaller.app.ui.theme.MtzColors
 import com.mtzinstaller.app.ui.theme.MtzType
@@ -152,8 +152,8 @@ fun OnboardingScreen(onStart: () -> Unit) {
                 }
                 Spacer(Modifier.height(18.dp))
                 val last = pager.currentPage == PAGES.lastIndex
-                CtaButton(
-                    if (last) "Masuk ke aplikasi" else "Lanjut",
+                SwipeButton(
+                    if (last) "Geser untuk masuk" else "Geser untuk lanjut",
                     { if (last) onStart() else scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
                     Modifier.fillMaxWidth(),
                 )
@@ -207,22 +207,81 @@ private fun IllustrationBrowse() {
 
 @Composable
 private fun IllustrationInstall() {
-    val pulse = rememberInfiniteTransition(label = "pulse")
-    val s by pulse.animateFloat(0.95f, 1.05f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "s")
+    val loop = rememberInfiniteTransition(label = "fly")
+    // file .mtz "terbang" masuk ke HP lalu muncul tanda ✓
+    val t by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2600), RepeatMode.Restart), label = "t")
+    val fly = (t / 0.55f).coerceIn(0f, 1f)
+    val landed = t > 0.6f
+    val check by loop.animateFloat(0.9f, 1.1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "check")
     Box(contentAlignment = Alignment.Center) {
-        Box(Modifier.size(210.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)))
+        Box(Modifier.size(250.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f)))
+        // HP berisi tema baru
         Box(
-            Modifier.size(160.dp).scale(s).clip(CircleShape)
-                .background(Brush.linearGradient(listOf(Color(0xFFFF8A6B), Color(0xFF9B8CFF))))
-                .border(5.dp, MtzColors.Neon, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { Text("10:24", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold) }
-        Box(
-            Modifier.offset(x = 62.dp, y = 62.dp).size(52.dp).clip(CircleShape).background(MtzColors.Mint)
-                .border(4.dp, Color.White, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { Text("✓", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black) }
-        Chip("Terpasang 🎉", Color.White, MtzColors.Ink, Modifier.offset(x = (-70).dp, y = (-110).dp).rotate(-6f))
+            Modifier
+                .width(134.dp)
+                .height(256.dp)
+                .neo(RoundedCornerShape(30.dp), shadow = MtzColors.Blue)
+                .clip(RoundedCornerShape(30.dp))
+                .background(Color.White)
+                .padding(5.dp),
+        ) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(25.dp))
+                    .background(
+                        if (landed) Brush.verticalGradient(listOf(Color(0xFF6E4BFF), Color(0xFFFF7EB3)))
+                        else Brush.verticalGradient(listOf(Color(0xFFDAD6EA), Color(0xFFBDB7D6))),
+                    )
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.width(30.dp).height(6.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
+                Spacer(Modifier.height(14.dp))
+                Image(painterResource(R.drawable.app_logo), null, Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)))
+                Spacer(Modifier.height(8.dp))
+                Text(if (landed) "Tema baru ✨" else "Menunggu…", color = Color.White, style = MtzType.Caption.copy(fontWeight = FontWeight.Bold))
+                Spacer(Modifier.weight(1f))
+                repeat(2) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        repeat(3) {
+                            Box(
+                                Modifier.size(24.dp).clip(RoundedCornerShape(8.dp))
+                                    .background(if (landed) MtzColors.Neon.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.55f)),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        // File .mtz yang terbang ke HP
+        if (!landed) {
+            Column(
+                Modifier
+                    .offset(x = (-120 + 120 * fly).dp, y = (-120 + 120 * fly).dp)
+                    .scale(1f - 0.5f * fly)
+                    .rotate(-12f + 12f * fly)
+                    .neo(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MtzColors.Ink)
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(painterResource(R.drawable.app_logo), null, Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)))
+                Spacer(Modifier.height(4.dp))
+                Text(".mtz", color = MtzColors.Neon, style = MtzType.Caption.copy(fontWeight = FontWeight.Bold))
+            }
+        }
+        // Tanda berhasil
+        if (landed) {
+            Box(
+                Modifier.offset(x = 64.dp, y = 112.dp).size(54.dp).scale(check).clip(CircleShape).background(MtzColors.Mint)
+                    .border(4.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Text("✓", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black) }
+        }
+        Chip("Terpasang 🎉", Color.White, MtzColors.Ink, Modifier.offset(x = 92.dp, y = (-118).dp).rotate(7f))
+        Chip("1 ketuk ⚡", MtzColors.Neon, MtzColors.Ink, Modifier.offset(x = (-96).dp, y = 104.dp).rotate(-7f))
     }
 }
 

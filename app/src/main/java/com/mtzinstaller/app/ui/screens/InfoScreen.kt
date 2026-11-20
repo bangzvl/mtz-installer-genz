@@ -44,6 +44,9 @@ fun InfoScreen(
     themeManagerAvailable: Boolean,
     themeManagerVersion: String?,
     autoApply: Boolean,
+    locked: Boolean,
+    needsRevert: Boolean,
+    onRevertGuide: () -> Unit,
     helpers: List<String>,
     report: () -> String,
     onOpenThemeApp: () -> Unit,
@@ -69,14 +72,18 @@ fun InfoScreen(
         Spacer(Modifier.height(14.dp))
 
         // Status aplikasi Tema
-        val statusColor = if (themeManagerAvailable) MtzColors.Mint else MtzColors.Coral
+        val statusColor = if (themeManagerAvailable && autoApply) MtzColors.Mint else if (themeManagerAvailable) MtzColors.Sun else MtzColors.Coral
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(statusColor).padding(20.dp)) {
             Text(if (themeManagerAvailable) "Aplikasi Tema terdeteksi ✅" else "Aplikasi Tema tidak ditemukan", style = MtzType.Title.copy(fontSize = 22.sp), color = MtzColors.Ink)
             Spacer(Modifier.height(6.dp))
             Text(
                 if (themeManagerAvailable) {
                     "Versi aplikasi Tema: ${themeManagerVersion ?: "?"}\n" +
-                        if (autoApply) "Pasang otomatis: didukung ✅" else "Pasang otomatis: ditutup Xiaomi di versi ini, jadi tema dipasang lewat File Manager/Impor (1 langkah tambahan)."
+                        when {
+                            autoApply -> "Pasang otomatis: didukung ✅"
+                            locked -> "Pasang otomatis: DIKUNCI 🔒 di versi ini."
+                            else -> "Pasang otomatis: tidak tersedia di versi ini."
+                        }
                 }
                 else "Fitur pasang otomatis hanya berfungsi di HP Xiaomi/Redmi/POCO dengan MIUI atau HyperOS.",
                 style = MtzType.Body,
@@ -84,7 +91,13 @@ fun InfoScreen(
             )
             if (themeManagerAvailable) {
                 Spacer(Modifier.height(14.dp))
-                PillButton("Buka Aplikasi Tema", onOpenThemeApp, small = true)
+                Row {
+                    if (needsRevert) {
+                        PillButton("Buka kunci 🔓", onRevertGuide, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    PillButton("Buka Aplikasi Tema", onOpenThemeApp, small = true)
+                }
             }
         }
 

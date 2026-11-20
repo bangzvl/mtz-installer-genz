@@ -46,7 +46,12 @@ object ThemeInstaller {
         /** File diserahkan ke aplikasi lain (Tema/File Manager); pengguna tinggal konfirmasi. */
         data class HandedOff(val via: String) : LaunchResult
         /** Tidak ada rute otomatis di versi Tema ini. */
-        data class ManualImportNeeded(val path: String, val themeAppVersion: String?) : LaunchResult
+        data class ManualImportNeeded(
+            val path: String,
+            val themeAppVersion: String?,
+            val testerState: TesterState,
+            val canRevertThemeApp: Boolean,
+        ) : LaunchResult
     }
 
     fun isThemeManagerAvailable(context: Context): Boolean = themeManagerVersion(context) != null
@@ -57,9 +62,32 @@ object ThemeInstaller {
         null
     }
 
+    enum class TesterState { USABLE, LOCKED, MISSING }
+
+    /**
+     * Status pintu pemasangan otomatis (ApplyThemeForScreenshot):
+     * USABLE  = ada & terbuka untuk aplikasi lain,
+     * LOCKED  = masih ada tapi dikunci Xiaomi (exported=false, mis. Tema 3.0.6.8),
+     * MISSING = sudah dihapus.
+     */
+    fun testerState(context: Context): TesterState {
+        val pm = context.packageManager
+        val infos = legacyTesterIntents(context, "/x.mtz").mapNotNull { pm.resolveActivity(it, 0)?.activityInfo }
+        return when {
+            infos.any { it.exported } -> TesterState.USABLE
+            infos.isNotEmpty() -> TesterState.LOCKED
+            else -> TesterState.MISSING
+        }
+    }
+
     /** True jika versi Tema yang terpasang masih punya jalur pemasangan otomatis (tester lama). */
-    fun hasAutoApplyRoute(context: Context): Boolean =
-        legacyTesterIntents(context, "/x.mtz").any { it.resolveActivity(context.packageManager) != null }
+    fun hasAutoApplyRoute(context: Context): Boolean = testerState(context) == TesterState.USABLE
+
+    /** True jika aplikasi Tema adalah versi update yang bisa dikembalikan ke versi pabrik. */
+    fun isThemeManagerUpdated(context: Context): Boolean = runCatching {
+        val ai = context.packageManager.getApplicationInfo(THEME_MANAGER, 0)
+        (ai.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+    }.getOrDefault(false)
 
     /**
      * Aplikasi Tema tidak bisa membaca folder privat aplikasi ini, jadi file disalin ke
@@ -108,9 +136,9 @@ object ThemeInstaller {
         val pm = context.packageManager
 
         // 1) Tester lama — kontrak persis yang terverifikasi di Tema Global 2.15.x / 3.0.x
-        legacyTesterIntents(context, exported.path).firstOrNull { it.resolveActivity(pm) != null }?.let {
-            if (start(context, it)) return LaunchResult.Applied
-        }
+        legacyTesterIntents(context, exported.path)
+            .firstOrNull { pm.resolveActivity(it, 0)?.activityInfo?.exported == true }
+            ?.let { if (start(context, it)) return LaunchResult.Applied }
 
         // 2) Versi Tema yang masih menerima "buka file .mtz" secara langsung
         MTZ_MIME_TYPES.forEach { mime ->
@@ -134,7 +162,12 @@ object ThemeInstaller {
         }
 
         // 4) Tidak ada rute otomatis
-        return LaunchResult.ManualImportNeeded(exported.path, themeManagerVersion(context))
+        return LaunchResult.ManualImportNeeded(
+            path = exported.path,
+            themeAppVersion = themeManagerVersion(context),
+            testerState = testerState(context),
+            canRevertThemeApp = isThemeManagerUpdated(context),
+        )
     }
 
     /** Buka layar "tema saya" (lokal) jika ada, kalau tidak buka aplikasi Tema biasa. */
@@ -212,8 +245,12 @@ object ThemeInstaller {
         sb.appendLine()
         sb.appendLine("-- Rute pemasangan --")
         val tester = legacyTesterIntents(context, "/x.mtz")
-        sb.appendLine("Tester support3.0 : ${yes(tester[0].resolveActivity(pm) != null)}")
-        sb.appendLine("Tester lama       : ${yes(tester[1].resolveActivity(pm) != null)}")
+        fun state(i: Intent): String {
+            val a = pm.resolveActivity(i, 0)?.activityInfo ?: return "tidak ada ❌"
+            return if (a.exported) "ADA, terbuka ✅" else "ada tapi DIKUNCI 🔒"
+        }
+        sb.appendLine("Tester support3.0 : ${state(tester[0])}")
+        sb.appendLine("Tester lama       : ${state(tester[1])}")
         val probe = Uri.parse("content://media/external/downloads/1")
         MTZ_MIME_TYPES.forEach { mime ->
             val handlers = pm.queryIntentActivities(viewIntent(probe, mime), 0).map { it.activityInfo.packageName }.distinct()

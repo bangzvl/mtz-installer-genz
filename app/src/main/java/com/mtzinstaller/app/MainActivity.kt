@@ -73,6 +73,12 @@ class MainActivity : ComponentActivity() {
         setContent { MtzAppTheme { MtzApp(vm) } }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Pengguna mungkin baru saja mengembalikan aplikasi Tema ke versi pabrik
+        vm.refreshThemeStatus()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
@@ -111,6 +117,8 @@ fun MtzApp(vm: MainViewModel) {
             when (tab) {
                 NavTab.Home -> HomeScreen(
                     themes = themes,
+                    setupNeeded = vm.needsRevertSetup,
+                    onSetup = { vm.showRevertGuide = true },
                     onImport = openPicker,
                     onOpen = { vm.selectedId = it.id },
                     onInstall = vm::install,
@@ -129,6 +137,9 @@ fun MtzApp(vm: MainViewModel) {
                     themeManagerAvailable = vm.themeManagerAvailable,
                     themeManagerVersion = vm.themeManagerVersion,
                     autoApply = vm.themeAutoApply,
+                    locked = vm.themeTester == ThemeInstaller.TesterState.LOCKED,
+                    needsRevert = vm.needsRevertSetup,
+                    onRevertGuide = { vm.showRevertGuide = true },
                     helpers = vm.installedHelpers(),
                     report = vm::diagnosticsReport,
                     onOpenThemeApp = { ThemeInstaller.openThemeManager(context) },
@@ -175,6 +186,14 @@ fun MtzApp(vm: MainViewModel) {
                         style = MtzType.Body,
                     )
                     Spacer(Modifier.height(14.dp))
+                    if (help.canRevertThemeApp && help.testerState != ThemeInstaller.TesterState.USABLE) {
+                        HelpOption(
+                            "⭐ Disarankan: kembalikan Tema ke versi pabrik (sekali saja)",
+                            "Versi update ${help.themeAppVersion ?: ""} mengunci pemasangan otomatis. " +
+                                "Versi pabrik biasanya masih membukanya, jadi setelah itu tombol Pasang langsung berfungsi.",
+                            "Lihat panduan",
+                        ) { close(); vm.showRevertGuide = true }
+                    }
                     HelpOption(
                         "1. Lewat File Manager",
                         "Buka folder MtzInstaller, ketuk file tema, pilih \"Tema\" lalu Terapkan.",
@@ -204,7 +223,72 @@ fun MtzApp(vm: MainViewModel) {
         )
     }
 
+    if (vm.showRevertGuide) {
+        RevertGuideDialog(
+            version = vm.themeManagerVersion,
+            onOpenAppInfo = { ThemeInstaller.openThemeManagerAppInfo(context) },
+            onOpenGetApps = {
+                val i = context.packageManager.getLaunchIntentForPackage("com.xiaomi.mipicks")
+                    ?: context.packageManager.getLaunchIntentForPackage("com.android.vending")
+                if (i != null) runCatching { context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            },
+            onDismiss = { vm.showRevertGuide = false; vm.refreshThemeStatus() },
+        )
+    }
+
     vm.busy?.let { BusyOverlay(it) }
+}
+
+@Composable
+private fun RevertGuideDialog(
+    version: String?,
+    onOpenAppInfo: () -> Unit,
+    onOpenGetApps: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Buka kunci pemasangan 🔓", style = MtzType.Heading) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Aplikasi Tema ${version ?: ""} di HP kamu adalah versi update yang mengunci pemasangan tema " +
+                        "dari aplikasi lain. Kembalikan ke versi pabrik sekali saja:",
+                    style = MtzType.Body,
+                )
+                Spacer(Modifier.height(14.dp))
+                HelpOption(
+                    "Langkah 1 — Copot pembaruan Tema",
+                    "Ketuk tombol di bawah → di halaman Info aplikasi Tema ketuk ⋮ (pojok kanan atas) → " +
+                        "\"Copot pemasangan pembaruan\" → OK. Tema yang sedang dipakai mungkin kembali ke bawaan, itu normal.",
+                    "Buka info aplikasi Tema",
+                    onOpenAppInfo,
+                )
+                HelpOption(
+                    "Langkah 2 — Matikan update otomatis",
+                    "Supaya Tema tidak diperbarui lagi: buka GetApps → Saya → Pengaturan → matikan " +
+                        "\"Pembaruan otomatis\". Jika ada di Play Store, matikan juga update otomatis untuk Tema.",
+                    "Buka GetApps",
+                    onOpenGetApps,
+                )
+                HelpOption(
+                    "Langkah 3 — Kembali & pasang",
+                    "Kembali ke MTZ Installer gen Z. Tab Info akan menampilkan \"Pasang otomatis: didukung ✅\". " +
+                        "Buka tema lalu ketuk Pasang Sekarang ⚡ → Terapkan.",
+                    "Selesai",
+                    onDismiss,
+                )
+                Text(
+                    "Jika setelah langkah 1 status masih terkunci, versi pabrik HP ini juga sudah menguncinya. " +
+                        "Gunakan \"Pasang dengan aplikasi lain\" (Shizuku + HyperOS MTZ Studio) di tab Info.",
+                    style = MtzType.Caption,
+                    color = MtzColors.Muted,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup", color = MtzColors.Ink) } },
+        containerColor = MtzColors.Cream,
+    )
 }
 
 @Composable

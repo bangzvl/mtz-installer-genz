@@ -54,9 +54,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var manualHelpTheme: MtzTheme? = null
         private set
 
-    val themeManagerAvailable: Boolean = ThemeInstaller.isThemeManagerAvailable(app)
-    val themeManagerVersion: String? = ThemeInstaller.themeManagerVersion(app)
-    val themeAutoApply: Boolean = ThemeInstaller.hasAutoApplyRoute(app)
+    // Status aplikasi Tema — dihitung ulang setiap aplikasi dibuka kembali (onResume)
+    var themeManagerAvailable by mutableStateOf(false)
+        private set
+    var themeManagerVersion by mutableStateOf<String?>(null)
+        private set
+    var themeTester by mutableStateOf(ThemeInstaller.TesterState.MISSING)
+        private set
+    var themeUpdated by mutableStateOf(false)
+        private set
+    val themeAutoApply: Boolean get() = themeTester == ThemeInstaller.TesterState.USABLE
+    /** Perlu setup sekali: Tema versi update yang menguncinya → kembalikan ke versi pabrik. */
+    val needsRevertSetup: Boolean get() = themeManagerAvailable && !themeAutoApply && themeUpdated
+    var showRevertGuide by mutableStateOf(false)
+
+    fun refreshThemeStatus() {
+        val app = getApplication<Application>()
+        themeManagerVersion = ThemeInstaller.themeManagerVersion(app)
+        themeManagerAvailable = themeManagerVersion != null
+        themeTester = ThemeInstaller.testerState(app)
+        themeUpdated = ThemeInstaller.isThemeManagerUpdated(app)
+    }
 
     // ---------- Unduhan dari tab Jelajah (MiuiThemez) ----------
     /** id unduhan → progres (0..1, atau -1 jika ukuran tidak diketahui). */
@@ -104,6 +122,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 downloads.remove(item.id)
             }
         }
+    }
+
+    init {
+        refreshThemeStatus()
     }
 
     fun finishOnboarding() {

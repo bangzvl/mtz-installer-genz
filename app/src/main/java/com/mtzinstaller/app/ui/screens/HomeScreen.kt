@@ -51,6 +51,8 @@ import com.mtzinstaller.app.ui.theme.accentFor
 @Composable
 fun HomeScreen(
     themes: List<MtzTheme>,
+    setupNeeded: Boolean,
+    onSetup: () -> Unit,
     onImport: () -> Unit,
     onOpen: (MtzTheme) -> Unit,
     onInstall: (MtzTheme) -> Unit,
@@ -81,6 +83,31 @@ fun HomeScreen(
                 Modifier.padding(top = 12.dp, bottom = 6.dp),
             )
           }
+        }
+
+        if (setupNeeded) {
+            item {
+                Row(
+                    Modifier
+                        .padding(start = 20.dp, end = 20.dp, top = 12.dp)
+                        .fillMaxWidth()
+                        .neo(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MtzColors.Sun)
+                        .clickable(onClick = onSetup)
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("🔒", fontSize = 24.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Setup sekali: buka kunci pemasangan", style = MtzType.Label)
+                        Text("Aplikasi Tema versi ini mengunci pasang otomatis. Ketuk untuk panduan 1 menit.", style = MtzType.Caption, color = MtzColors.Ink.copy(alpha = 0.75f))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    PillButton("Mulai", onSetup, small = true)
+                }
+            }
         }
 
         item { ImportCard(onImport, Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) }

@@ -36,6 +36,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mtzinstaller.app.ui.components.PillButton
+import com.mtzinstaller.app.ui.components.glass
+import com.mtzinstaller.app.ui.components.neo
+import androidx.compose.ui.graphics.Brush
 import com.mtzinstaller.app.ui.theme.MtzColors
 import com.mtzinstaller.app.ui.theme.MtzType
 
@@ -47,6 +50,8 @@ fun InfoScreen(
     locked: Boolean,
     needsRevert: Boolean,
     onRevertGuide: () -> Unit,
+    isFactoryVersion: Boolean,
+    onRestoreLatest: () -> Unit,
     helpers: List<String>,
     report: () -> String,
     onOpenThemeApp: () -> Unit,
@@ -73,12 +78,13 @@ fun InfoScreen(
 
         // Status aplikasi Tema
         val statusColor = if (themeManagerAvailable && autoApply) MtzColors.Mint else if (themeManagerAvailable) MtzColors.Sun else MtzColors.Coral
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(statusColor).padding(20.dp)) {
+        Column(Modifier.fillMaxWidth().neo(RoundedCornerShape(24.dp), shadow = statusColor).clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(listOf(statusColor.copy(alpha = 0.55f), statusColor))).padding(20.dp)) {
             Text(if (themeManagerAvailable) "Aplikasi Tema terdeteksi ✅" else "Aplikasi Tema tidak ditemukan", style = MtzType.Title.copy(fontSize = 22.sp), color = MtzColors.Ink)
             Spacer(Modifier.height(6.dp))
             Text(
                 if (themeManagerAvailable) {
-                    "Versi aplikasi Tema: ${themeManagerVersion ?: "?"}\n" +
+                    "Versi aplikasi Tema: ${themeManagerVersion ?: "?"}" +
+                        (if (isFactoryVersion) " (versi pabrik)\n" else " (versi update)\n") +
                         when {
                             autoApply -> "Pasang otomatis: didukung ✅"
                             locked -> "Pasang otomatis: DIKUNCI 🔒 di versi ini."
@@ -93,10 +99,14 @@ fun InfoScreen(
                 Spacer(Modifier.height(14.dp))
                 Row {
                     if (needsRevert) {
-                        PillButton("Buka kunci 🔓", onRevertGuide, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
+                        PillButton("Buka kunci 🔓", onRevertGuide, small = true, container = MtzColors.Blue, content = Color.White)
                         Spacer(Modifier.width(10.dp))
                     }
-                    PillButton("Buka Aplikasi Tema", onOpenThemeApp, small = true)
+                    if (isFactoryVersion) {
+                        PillButton("Ke versi terbaru ⬆️", onRestoreLatest, small = true, container = MtzColors.Blue, content = Color.White)
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    PillButton("Buka Tema", onOpenThemeApp, small = true, container = Color.White, content = MtzColors.Ink)
                 }
             }
         }
@@ -112,7 +122,7 @@ fun InfoScreen(
             Spacer(Modifier.height(12.dp))
             val r = reportText
             if (r == null) {
-                PillButton("Buat laporan", { reportText = report() }, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
+                PillButton("Buat laporan", { reportText = report() }, small = true, container = MtzColors.Blue, content = Color.White)
             } else {
                 Text(
                     r,
@@ -189,7 +199,7 @@ fun InfoScreen(
 
 @Composable
 private fun InfoCard(title: String, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color.White).padding(20.dp)) {
+    Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp)).padding(20.dp)) {
         Text(title, style = MtzType.Heading)
         Spacer(Modifier.height(12.dp))
         content()

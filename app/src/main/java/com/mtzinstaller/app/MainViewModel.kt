@@ -19,6 +19,7 @@ import com.mtzinstaller.app.data.MtzTheme
 import com.mtzinstaller.app.data.ThemeInstaller
 import com.mtzinstaller.app.data.ThemeStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -67,6 +68,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Perlu setup sekali: Tema versi update yang menguncinya → kembalikan ke versi pabrik. */
     val needsRevertSetup: Boolean get() = themeManagerAvailable && !themeAutoApply && themeUpdated
     var showRevertGuide by mutableStateOf(false)
+    var showUpdateGuide by mutableStateOf(false)
 
     fun refreshThemeStatus() {
         val app = getApplication<Application>()
@@ -152,14 +154,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Progres pemasangan untuk animasi loading (null = tidak sedang memasang). */
+    data class InstallProgress(val theme: MtzTheme, val step: Int, val done: Boolean = false, val failed: Boolean = false)
+
+    var installProgress by mutableStateOf<InstallProgress?>(null)
+        private set
+
     fun install(theme: MtzTheme) {
-        if (busy != null) return
+        if (busy != null || installProgress != null) return
+        selectedId = null // tutup panel detail agar animasi pemasangan terlihat penuh
         viewModelScope.launch {
-            busy = "Menyiapkan tema…"
+            installProgress = InstallProgress(theme, 0)
             try {
                 val ctx = getApplication<Application>()
+                delay(500) // beri waktu animasi tampil
                 val exported = withContext(Dispatchers.IO) { ThemeInstaller.exportToPublic(ctx, theme) }
-                when (val r = ThemeInstaller.launchApply(ctx, exported)) {
+                installProgress = InstallProgress(theme, 1)
+                delay(450)
+                installProgress = InstallProgress(theme, 2)
+                delay(350)
+                val r = ThemeInstaller.launchApply(ctx, exported)
+                val ok = r !is ThemeInstaller.LaunchResult.ManualImportNeeded
+                installProgress = InstallProgress(theme, 3, done = ok, failed = !ok)
+                delay(if (ok) 700 else 900)
+                when (r) {
                     ThemeInstaller.LaunchResult.Applied ->
                         _messages.tryEmit("Membuka Tema untuk menerapkan \"${theme.title}\"")
                     is ThemeInstaller.LaunchResult.HandedOff ->
@@ -169,16 +187,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         manualHelp = r
                     }
                 }
-                val now = System.currentTimeMillis()
-                update { list ->
-                    list.map {
-                        if (it.id == theme.id) it.copy(lastInstalledAt = now, installCount = it.installCount + 1) else it
+                if (ok) {
+                    val now = System.currentTimeMillis()
+                    update { list ->
+                        list.map {
+                            if (it.id == theme.id) it.copy(lastInstalledAt = now, installCount = it.installCount + 1) else it
+                        }
                     }
                 }
             } catch (e: Exception) {
                 _messages.tryEmit("Gagal memasang: ${e.localizedMessage ?: e.javaClass.simpleName}")
             } finally {
-                busy = null
+                installProgress = null
             }
         }
     }

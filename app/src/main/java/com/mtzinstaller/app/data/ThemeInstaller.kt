@@ -190,6 +190,29 @@ object ThemeInstaller {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
     )
 
+    /**
+     * Membuka halaman aplikasi Tema di toko aplikasi (GetApps Xiaomi, lalu Play Store) supaya
+     * pengguna bisa memperbarui kembali ke versi terbaru setelah sebelumnya dikembalikan ke versi pabrik.
+     */
+    fun openThemeManagerStorePage(context: Context): Boolean {
+        val candidates = listOf(
+            Intent(Intent.ACTION_VIEW, Uri.parse("mimarket://details?id=$THEME_MANAGER")).setPackage("com.xiaomi.mipicks"),
+            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$THEME_MANAGER")).setPackage("com.xiaomi.mipicks"),
+            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$THEME_MANAGER")).setPackage("com.android.vending"),
+            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$THEME_MANAGER")),
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$THEME_MANAGER")),
+        )
+        return candidates.any { start(context, it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+
+    /** Membuka aplikasi GetApps (untuk mengatur pembaruan otomatis). */
+    fun openGetApps(context: Context): Boolean {
+        val i = context.packageManager.getLaunchIntentForPackage("com.xiaomi.mipicks")
+            ?: context.packageManager.getLaunchIntentForPackage("com.android.vending")
+            ?: return false
+        return start(context, i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     /** Membuka File Manager di folder Download/MtzInstaller (best effort). */
     fun openExportFolder(context: Context): Boolean {
         val folder = Uri.parse("content://com.android.externalstorage.documents/document/primary%3ADownload%2F$EXPORT_FOLDER")

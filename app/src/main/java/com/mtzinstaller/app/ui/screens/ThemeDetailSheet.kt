@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.mtzinstaller.app.data.MtzTheme
 import com.mtzinstaller.app.ui.components.CircleIconButton
+import com.mtzinstaller.app.ui.components.CtaButton
 import com.mtzinstaller.app.ui.components.PillButton
 import com.mtzinstaller.app.ui.components.ThemePreview
 import com.mtzinstaller.app.ui.components.formatSize
@@ -85,18 +86,16 @@ fun ThemeDetailSheet(
             }
             Spacer(Modifier.height(22.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                PillButton(
-                    if (busy) "Memproses…" else "Pasang Sekarang ⚡",
+                CtaButton(
+                    if (busy) "Memproses…" else "Pasang Sekarang",
                     onInstall,
                     Modifier.weight(1f),
-                    container = MtzColors.Lime,
-                    content = MtzColors.Ink,
                     enabled = !busy,
                 )
                 Spacer(Modifier.width(10.dp))
                 CircleIconButton(
                     if (theme.favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    "Favorit", onToggleFavorite, tint = MtzColors.Coral, size = 54.dp,
+                    "Favorit", onToggleFavorite, tint = MtzColors.Pink, size = 54.dp,
                 )
                 Spacer(Modifier.width(8.dp))
                 CircleIconButton(Icons.Filled.Delete, "Hapus", { confirmDelete = true }, tint = MtzColors.Muted, size = 54.dp)

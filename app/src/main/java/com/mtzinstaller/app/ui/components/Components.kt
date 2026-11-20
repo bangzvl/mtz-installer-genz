@@ -4,6 +4,19 @@ import android.graphics.BitmapFactory
 import android.text.format.DateUtils
 import android.util.LruCache
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import com.mtzinstaller.app.ui.theme.tileGradient
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -62,16 +75,23 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.random.Random
 
-// ---------- Gaya gen Z: garis hitam + bayangan "stiker" ----------
+// ---------- Gaya "sky glass": bayangan biru lembut + tepi putih tipis ----------
 
-/** Garis tepi hitam tegas + bayangan padat bergeser (neo-brutalism). Pasang sebelum clip(). */
-fun Modifier.neo(shape: Shape, offset: Dp = 3.dp, stroke: Dp = 2.dp, shadow: Color = MtzColors.Ink): Modifier = this
-    .drawBehind {
-        val o = offset.toPx()
-        val outline = shape.createOutline(size, layoutDirection, this)
-        translate(o, o) { drawOutline(outline, shadow) }
-    }
-    .border(stroke, MtzColors.Ink, shape)
+/**
+ * Elevasi lembut kebiruan + garis tepi putih tipis (efek kaca). Pasang sebelum clip().
+ * Parameter lama (offset/stroke/shadow) dipertahankan agar pemanggil lama tetap jalan;
+ * [shadow] dipakai sebagai warna bayangan jika bukan Ink.
+ */
+fun Modifier.neo(shape: Shape, offset: Dp = 3.dp, stroke: Dp = 2.dp, shadow: Color = MtzColors.Ink): Modifier {
+    val glow = if (shadow == MtzColors.Ink) MtzColors.Blue else shadow
+    return this
+        .shadow(elevation = offset * 4, shape = shape, ambientColor = glow.copy(alpha = 0.18f), spotColor = glow.copy(alpha = 0.28f))
+        .border(1.dp, Color.White.copy(alpha = 0.75f), shape)
+}
+
+/** Kartu kaca putih transparan dengan bayangan lembut. */
+fun Modifier.glass(shape: Shape = RoundedCornerShape(24.dp)): Modifier =
+    this.neo(shape).clip(shape).background(MtzColors.Glass)
 
 @Composable
 fun Sticker(
@@ -79,16 +99,16 @@ fun Sticker(
     modifier: Modifier = Modifier,
     color: Color = MtzColors.Lime,
     content: Color = MtzColors.Ink,
-    angle: Float = -6f,
+    angle: Float = 0f,
     fontSize: Int = 13,
 ) {
     Box(
         modifier
             .rotate(angle)
-            .neo(RoundedCornerShape(10.dp), offset = 2.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .neo(CircleShape, offset = 2.dp)
+            .clip(CircleShape)
             .background(color)
-            .padding(horizontal = 10.dp, vertical = 3.dp),
+            .padding(horizontal = 12.dp, vertical = 5.dp),
     ) {
         Text(text, color = content, style = MtzType.Label.copy(fontSize = fontSize.sp))
     }
@@ -97,11 +117,17 @@ fun Sticker(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Ticker(text: String, modifier: Modifier = Modifier) {
-    Box(modifier.rotate(-2f).fillMaxWidth().background(MtzColors.Ink).padding(vertical = 8.dp)) {
+    Box(
+        modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .glass(CircleShape)
+            .padding(vertical = 9.dp),
+    ) {
         Text(
             text.repeat(3),
-            color = MtzColors.Lime,
-            style = MtzType.Label.copy(fontSize = 14.sp, letterSpacing = 0.5.sp),
+            color = MtzColors.Blue,
+            style = MtzType.Label.copy(fontSize = 13.sp, letterSpacing = 0.3.sp),
             maxLines = 1,
             modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, velocity = 40.dp),
         )
@@ -138,9 +164,7 @@ fun PillButton(
 fun CountChip(emoji: String, count: Int, modifier: Modifier = Modifier) {
     Row(
         modifier
-            .neo(CircleShape)
-            .clip(CircleShape)
-            .background(Color.White)
+            .glass(CircleShape)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -212,34 +236,101 @@ enum class NavTab(val label: String, val icon: ImageVector) {
 }
 
 @Composable
-fun FloatingNavBar(current: NavTab, onSelect: (NavTab) -> Unit, modifier: Modifier = Modifier) {
+fun FloatingNavBar(
+    current: NavTab,
+    onSelect: (NavTab) -> Unit,
+    modifier: Modifier = Modifier,
+    onCenter: (() -> Unit)? = null,
+) {
     Row(
         modifier
-            .neo(CircleShape, offset = 4.dp)
-            .clip(CircleShape)
-            .background(Color.White)
-            .padding(6.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = 18.dp)
+            .fillMaxWidth()
+            .glass(RoundedCornerShape(30.dp))
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NavTab.entries.forEach { tab ->
+        NavTab.entries.forEachIndexed { index, tab ->
+            if (index == 2 && onCenter != null) GlowOrb(onCenter)
             val active = tab == current
-            Row(
+            val tint by animateColorAsState(if (active) MtzColors.Ink else MtzColors.Muted.copy(alpha = 0.8f), label = "navTint")
+            Column(
                 Modifier
-                    .clip(CircleShape)
-                    .background(if (active) MtzColors.Ink else Color.Transparent)
+                    .clip(RoundedCornerShape(16.dp))
                     .clickable { onSelect(tab) }
-                    .animateContentSize()
-                    .padding(horizontal = if (active) 18.dp else 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(tab.icon, tab.label, tint = if (active) MtzColors.Lime else MtzColors.Muted, modifier = Modifier.size(20.dp))
-                if (active) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(tab.label, color = MtzColors.Lime, style = MtzType.Label)
-                }
+                Icon(tab.icon, tab.label, tint = tint, modifier = Modifier.size(22.dp))
+                Text(tab.label, color = tint, style = MtzType.Caption.copy(fontSize = 11.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium))
             }
         }
+    }
+}
+
+/** Tombol bulat bercahaya di tengah navigasi (aksi cepat: impor .mtz). */
+@Composable
+fun GlowOrb(onClick: () -> Unit, size: Dp = 54.dp) {
+    val pulse = rememberInfiniteTransition(label = "orb")
+    val glow by pulse.animateFloat(0.25f, 0.55f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "glow")
+    Box(
+        Modifier
+            .size(size)
+            .shadow(18.dp, CircleShape, ambientColor = MtzColors.Blue.copy(alpha = glow), spotColor = MtzColors.Blue.copy(alpha = glow))
+            .clip(CircleShape)
+            .background(MtzColors.Orb)
+            .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Filled.Add, "Impor .mtz", tint = Color.White, modifier = Modifier.size(26.dp))
+    }
+}
+
+/** Tombol utama gaya desain: pil navy dengan lingkaran putih berisi panah. */
+@Composable
+fun CtaButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Row(
+        modifier
+            .neo(CircleShape)
+            .clip(CircleShape)
+            .background(MtzColors.Ink)
+            .alpha(if (enabled) 1f else 0.55f)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(44.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MtzColors.Ink, modifier = Modifier.size(20.dp))
+        }
+        Text(
+            text,
+            color = Color.White,
+            style = MtzType.Label.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f).padding(end = 44.dp),
+        )
+    }
+}
+
+/** Ubin ikon warna-warni + label (baris kategori di Beranda). */
+@Composable
+fun QuickAction(icon: String, label: String, color: Color, onClick: () -> Unit) {
+    Column(
+        Modifier.width(66.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier
+                .size(52.dp)
+                .neo(RoundedCornerShape(16.dp), offset = 2.dp, shadow = color)
+                .clip(RoundedCornerShape(16.dp))
+                .background(tileGradient(color)),
+            contentAlignment = Alignment.Center,
+        ) { Text(icon, fontSize = 22.sp) }
+        Spacer(Modifier.height(6.dp))
+        Text(label, style = MtzType.Caption, color = MtzColors.Ink, maxLines = 1)
     }
 }
 

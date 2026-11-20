@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtzinstaller.app.data.ThemeInstaller
 import com.mtzinstaller.app.ui.components.FloatingNavBar
+import com.mtzinstaller.app.ui.components.InstallOverlay
+import com.mtzinstaller.app.ui.components.SoftBusyOverlay
 import com.mtzinstaller.app.ui.components.NavTab
 import com.mtzinstaller.app.ui.components.PillButton
 import com.mtzinstaller.app.ui.screens.BrowseScreen
@@ -113,13 +115,14 @@ fun MtzApp(vm: MainViewModel) {
     } else {
         var tab by rememberSaveable { mutableStateOf(NavTab.Home) }
 
-        Box(Modifier.fillMaxSize().background(MtzColors.Cream)) {
+        Box(Modifier.fillMaxSize().background(MtzColors.Background)) {
             when (tab) {
                 NavTab.Home -> HomeScreen(
                     themes = themes,
                     setupNeeded = vm.needsRevertSetup,
                     onSetup = { vm.showRevertGuide = true },
                     onImport = openPicker,
+                    onNavigate = { tab = it },
                     onOpen = { vm.selectedId = it.id },
                     onInstall = vm::install,
                     onToggleFavorite = vm::toggleFavorite,
@@ -140,6 +143,8 @@ fun MtzApp(vm: MainViewModel) {
                     locked = vm.themeTester == ThemeInstaller.TesterState.LOCKED,
                     needsRevert = vm.needsRevertSetup,
                     onRevertGuide = { vm.showRevertGuide = true },
+                    isFactoryVersion = vm.themeManagerAvailable && !vm.themeUpdated,
+                    onRestoreLatest = { vm.showUpdateGuide = true },
                     helpers = vm.installedHelpers(),
                     report = vm::diagnosticsReport,
                     onOpenThemeApp = { ThemeInstaller.openThemeManager(context) },
@@ -149,11 +154,12 @@ fun MtzApp(vm: MainViewModel) {
             FloatingNavBar(
                 current = tab,
                 onSelect = { tab = it },
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp),
+                onCenter = openPicker,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 14.dp),
             )
             SnackbarHost(
                 snackbar,
-                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 92.dp),
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 104.dp),
             ) { data ->
                 Snackbar(data, containerColor = MtzColors.Ink, contentColor = Color.White, shape = RoundedCornerShape(18.dp))
             }
@@ -227,16 +233,82 @@ fun MtzApp(vm: MainViewModel) {
         RevertGuideDialog(
             version = vm.themeManagerVersion,
             onOpenAppInfo = { ThemeInstaller.openThemeManagerAppInfo(context) },
-            onOpenGetApps = {
-                val i = context.packageManager.getLaunchIntentForPackage("com.xiaomi.mipicks")
-                    ?: context.packageManager.getLaunchIntentForPackage("com.android.vending")
-                if (i != null) runCatching { context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            },
+            onOpenGetApps = { ThemeInstaller.openGetApps(context) },
             onDismiss = { vm.showRevertGuide = false; vm.refreshThemeStatus() },
         )
     }
 
-    vm.busy?.let { BusyOverlay(it) }
+    if (vm.showUpdateGuide) {
+        UpdateGuideDialog(
+            version = vm.themeManagerVersion,
+            onOpenStore = { ThemeInstaller.openThemeManagerStorePage(context) },
+            onOpenGetApps = { ThemeInstaller.openGetApps(context) },
+            onDismiss = { vm.showUpdateGuide = false; vm.refreshThemeStatus() },
+        )
+    }
+
+    vm.installProgress?.let { p ->
+        InstallOverlay(
+            title = p.theme.title,
+            previewPath = p.theme.previewPath,
+            colorKey = p.theme.id,
+            step = p.step,
+            done = p.done,
+            failed = p.failed,
+        )
+    }
+    vm.busy?.let { SoftBusyOverlay(it) }
+}
+
+@Composable
+private fun UpdateGuideDialog(
+    version: String?,
+    onOpenStore: () -> Unit,
+    onOpenGetApps: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Kembalikan Tema ke versi terbaru ⬆️", style = MtzType.Heading) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Saat ini aplikasi Tema memakai versi pabrik${version?.let { " ($it)" } ?: ""}. " +
+                        "Kamu bisa memperbaruinya lagi ke versi terbaru kapan saja.",
+                    style = MtzType.Body,
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Catatan: tema yang sudah terpasang tetap aktif, tapi versi terbaru mengunci pemasangan " +
+                        "otomatis lagi. Untuk memasang tema baru nanti, cukup ulangi \"Buka kunci\".",
+                    style = MtzType.Caption,
+                    color = MtzColors.Muted,
+                )
+                Spacer(Modifier.height(14.dp))
+                HelpOption(
+                    "Langkah 1 — Perbarui aplikasi Tema",
+                    "Ketuk tombol di bawah untuk membuka halaman Tema di GetApps/Play Store, lalu ketuk \"Perbarui\".",
+                    "Buka halaman update",
+                    onOpenStore,
+                )
+                HelpOption(
+                    "Langkah 2 (opsional) — Nyalakan lagi update otomatis",
+                    "Di GetApps → Saya → Pengaturan, nyalakan kembali \"Pembaruan otomatis\" jika kamu ingin semua aplikasi selalu terbaru.",
+                    "Buka GetApps",
+                    onOpenGetApps,
+                )
+                Text(
+                    "Jika halaman update tidak menampilkan tombol Perbarui, buka Pengaturan → Tentang ponsel → " +
+                        "Pembaruan sistem/aplikasi, atau tunggu update otomatis dari Xiaomi.",
+                    style = MtzType.Caption,
+                    color = MtzColors.Muted,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Selesai", color = MtzColors.Blue) } },
+        containerColor = MtzColors.Cream,
+        shape = RoundedCornerShape(28.dp),
+    )
 }
 
 @Composable
@@ -297,13 +369,13 @@ private fun HelpOption(title: String, body: String, action: String, onClick: () 
         Modifier
             .padding(bottom = 12.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(Color.White)
             .padding(14.dp),
     ) {
         Text(title, style = MtzType.Label)
         Text(body, style = MtzType.Caption, color = MtzColors.Muted, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
-        PillButton(action, onClick, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
+        PillButton(action, onClick, small = true, container = MtzColors.Blue, content = Color.White)
     }
 }
 

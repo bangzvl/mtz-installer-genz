@@ -69,10 +69,10 @@ fun OnboardingScreen(onStart: () -> Unit) {
                 PhoneMock(Color(0xFF4FD1A5), 104.dp, Modifier.offset(x = 92.dp, y = 40.dp).rotate(12f))
                 PhoneMock(Color(0xFFFF8A6B), 128.dp, Modifier.offset(y = 20.dp).zIndex(1f))
                 Column(
-                    Modifier.align(Alignment.TopStart).padding(start = 22.dp, top = 120.dp).zIndex(2f).rotate(-6f),
+                    Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = 24.dp).zIndex(2f).rotate(-6f),
                 ) {
                     Text("GLOW", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black, lineHeight = 38.sp)
-                    Text("UP", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black, lineHeight = 38.sp)
+                    Text("UP ✨", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black, lineHeight = 38.sp)
                 }
                 Sticker(".mtz", Modifier.zIndex(2f).offset(x = 86.dp, y = 120.dp), color = Color.White, content = MtzColors.Blue, fontSize = 15)
             }

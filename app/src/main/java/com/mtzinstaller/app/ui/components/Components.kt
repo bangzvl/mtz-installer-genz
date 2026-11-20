@@ -309,7 +309,9 @@ fun CtaButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, 
             color = Color.White,
             style = MtzType.Label.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f).padding(end = 44.dp),
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
         )
     }
 }

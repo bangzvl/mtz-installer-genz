@@ -164,30 +164,10 @@ fun MiuiThemezBrowser(
                 factory = { webView },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 12.dp)
-                    .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)),
+                    .navigationBarsPadding()
+                    .padding(start = 12.dp, end = 12.dp, bottom = 92.dp)
+                    .clip(RoundedCornerShape(22.dp)),
             )
-            val active = downloads.filterKeys { it.startsWith("web:") }
-            if (active.isNotEmpty()) {
-                Row(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(bottom = 92.dp)
-                        .clip(CircleShape)
-                        .background(MtzColors.Ink)
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(color = MtzColors.Coral, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(10.dp))
-                    val p = active.values.first()
-                    Text(
-                        if (p < 0f) "Mengunduh tema…" else "Mengunduh tema ${(p * 100).toInt()}%",
-                        color = Color.White, style = MtzType.Label,
-                    )
-                }
-            }
         }
     }
 }

@@ -58,7 +58,6 @@ fun InfoScreen(
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
-    var reportText by remember { mutableStateOf<String?>(null) }
     fun openUrl(url: String) = runCatching {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
@@ -112,42 +111,33 @@ fun InfoScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-        InfoCard("Cek kompatibilitas HP 🩺") {
-            Text(
-                "Buat laporan berisi versi aplikasi Tema dan jalur pemasangan yang tersedia di HP ini. " +
-                    "Salin lalu kirim ke developer kalau tema belum bisa dipasang.",
-                style = MtzType.Body,
-                color = MtzColors.Ink.copy(alpha = 0.8f),
-            )
-            Spacer(Modifier.height(12.dp))
-            val r = reportText
-            if (r == null) {
-                PillButton("Buat laporan", { reportText = report() }, small = true, container = MtzColors.Blue, content = Color.White)
-            } else {
+        // Cek kompatibilitas — versi simpel: satu status + satu tombol
+        Row(
+            Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp)).padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(46.dp).clip(RoundedCornerShape(15.dp))
+                    .background(if (autoApply) MtzColors.Mint.copy(alpha = 0.2f) else MtzColors.Sun.copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center,
+            ) { Text(if (autoApply) "✅" else "🩺", fontSize = 22.sp) }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Cek kompatibilitas", style = MtzType.Label)
                 Text(
-                    r,
-                    style = MtzType.Caption.copy(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MtzColors.Cream).padding(12.dp),
+                    when {
+                        !themeManagerAvailable -> "Aplikasi Tema tidak ditemukan"
+                        autoApply -> "HP siap memasang tema"
+                        else -> "Perlu setup sekali"
+                    },
+                    style = MtzType.Caption,
+                    color = MtzColors.Muted,
                 )
-                Spacer(Modifier.height(12.dp))
-                Row {
-                    PillButton("Salin", {
-                        clipboard.setText(AnnotatedString(r))
-                        Toast.makeText(context, "Laporan disalin", Toast.LENGTH_SHORT).show()
-                    }, small = true, container = MtzColors.Lime, content = MtzColors.Ink)
-                    Spacer(Modifier.width(10.dp))
-                    PillButton("Bagikan", {
-                        runCatching {
-                            context.startActivity(
-                                Intent.createChooser(
-                                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, r),
-                                    "Kirim laporan",
-                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
-                    }, small = true)
-                }
             }
+            PillButton("Salin laporan", {
+                clipboard.setText(AnnotatedString(report()))
+                Toast.makeText(context, "Laporan disalin, tinggal tempel ke chat", Toast.LENGTH_SHORT).show()
+            }, small = true, container = MtzColors.Lime, content = MtzColors.Blue)
         }
 
         Spacer(Modifier.height(16.dp))

@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.mtzinstaller.app.ui.theme.MtzColors
 import com.mtzinstaller.app.ui.theme.MtzType
@@ -239,3 +240,149 @@ fun SoftBusyOverlay(message: String) {
         }
     }
 }
+
+/** Popup saat mengunduh tema dari Jelajah: cincin progres, persen, dan tombol batal. */
+@Composable
+fun DownloadOverlay(title: String, progress: Float, verifying: Boolean, onCancel: () -> Unit) {
+    val infinite = rememberInfiniteTransition(label = "dl")
+    val angle by infinite.animateFloat(0f, 360f, infiniteRepeatable(tween(1200, easing = LinearEasing)), label = "spin")
+    val known = progress >= 0f && !verifying
+    val shown by animateFloatAsState(if (known) progress else 0f, tween(300), label = "dlp")
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x6615161B))
+            .pointerInput(Unit) { detectTapGestures { } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier
+                .padding(horizontal = 32.dp)
+                .fillMaxWidth()
+                .glass(RoundedCornerShape(32.dp))
+                .background(Color.White.copy(alpha = 0.6f))
+                .padding(horizontal = 24.dp, vertical = 26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.size(120.dp), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val stroke = 9.dp.toPx()
+                    val tl = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2)
+                    val sz = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+                    drawArc(MtzColors.Line, 0f, 360f, false, topLeft = tl, size = sz, style = Stroke(stroke))
+                    drawArc(
+                        Brush.sweepGradient(listOf(MtzColors.BlueSoft, MtzColors.Blue, MtzColors.BlueDeep, MtzColors.BlueSoft)),
+                        startAngle = if (known) -90f else angle,
+                        sweepAngle = if (known) 360f * shown else 90f,
+                        useCenter = false,
+                        topLeft = tl,
+                        size = sz,
+                        style = Stroke(stroke, cap = StrokeCap.Round),
+                    )
+                }
+                Text(
+                    when {
+                        verifying -> "🔍"
+                        known -> "${(shown * 100).toInt()}%"
+                        else -> "⬇️"
+                    },
+                    style = MtzType.Title,
+                )
+            }
+            Spacer(Modifier.height(18.dp))
+            Text(
+                if (verifying) "Memeriksa isi tema…" else "Sedang mengunduh",
+                style = MtzType.Caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                color = MtzColors.Blue,
+            )
+            Text(title, style = MtzType.Title.copy(fontSize = 20.sp, textAlign = TextAlign.Center), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Dari MiuiThemez · tema otomatis masuk ke Koleksi setelah selesai.",
+                style = MtzType.Caption,
+                color = MtzColors.Muted,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(18.dp))
+            if (!verifying) PillButton("Batalkan", onCancel, small = true, container = Color.White, content = MtzColors.Ink)
+        }
+    }
+}
+
+/** Popup kartu setelah tema dikirim ke aplikasi Tema dan pengguna kembali ke aplikasi. */
+@Composable
+fun InstalledSuccessCard(
+    title: String,
+    previewPath: String?,
+    colorKey: String,
+    onClose: () -> Unit,
+    onOpenCollection: () -> Unit,
+) {
+    val pop by animateFloatAsState(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "pop")
+    val visible = remember { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x6615161B))
+            .pointerInput(Unit) { detectTapGestures { onClose() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedVisibility(visibleState = visible, enter = fadeIn(tween(200)) + scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy))) {
+            Box(
+                Modifier
+                    .padding(horizontal = 28.dp)
+                    .fillMaxWidth()
+                    .pointerInput(Unit) { detectTapGestures { } },
+            ) {
+                Confetti(Modifier.matchParentSize().scale(1.25f), count = 26, seed = 3)
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .glass(RoundedCornerShape(34.dp))
+                        .background(Color.White.copy(alpha = 0.7f))
+                        .padding(horizontal = 24.dp, vertical = 28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxSize().clip(CircleShape).background(MtzColors.Mint.copy(alpha = 0.18f)))
+                        ThemePreview(
+                            previewPath, title, accentFor(colorKey),
+                            Modifier.size(104.dp).border(4.dp, MtzColors.Mint, CircleShape),
+                            CircleShape,
+                        )
+                        Box(
+                            Modifier.align(Alignment.BottomEnd).padding(8.dp).size(38.dp).scale(pop)
+                                .clip(CircleShape).background(MtzColors.Mint).border(3.dp, Color.White, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(22.dp)) }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Box(Modifier.clip(CircleShape).background(MtzColors.Neon).padding(horizontal = 12.dp, vertical = 5.dp)) {
+                        Text("✦ Berhasil", style = MtzType.Caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), color = MtzColors.Ink)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text("Tema terpasang! 🎉", style = MtzType.Title, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "\"$title\" sudah dikirim ke aplikasi Tema. Kalau tampilan HP belum berubah, buka Tema lalu ketuk Terapkan.",
+                        style = MtzType.Body,
+                        color = MtzColors.Muted,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    CtaButton("Mantap!", onClose, Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Lihat Koleksi",
+                        style = MtzType.Label,
+                        color = MtzColors.Blue,
+                        modifier = Modifier.clip(CircleShape).clickableNoRipple(onOpenCollection).padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
+    this.pointerInput(onClick) { detectTapGestures { onClick() } }

@@ -48,7 +48,13 @@ object CatalogRepository {
     }
 
     /** Unduh file ke [dest]. [onProgress] dipanggil dengan nilai 0..1 (atau -1 jika ukuran tidak diketahui). */
-    fun download(url: String, dest: File, headers: Map<String, String> = emptyMap(), onProgress: (Float) -> Unit) {
+    fun download(
+        url: String,
+        dest: File,
+        headers: Map<String, String> = emptyMap(),
+        isCancelled: () -> Boolean = { false },
+        onProgress: (Float) -> Unit,
+    ) {
         open(url, headers).use { conn ->
             val total = conn.contentLengthLong
             var done = 0L
@@ -59,6 +65,7 @@ object CatalogRepository {
                     while (true) {
                         val n = input.read(buf)
                         if (n < 0) break
+                        if (isCancelled()) throw java.util.concurrent.CancellationException("dibatalkan")
                         out.write(buf, 0, n)
                         done += n
                         if (total > 0) {

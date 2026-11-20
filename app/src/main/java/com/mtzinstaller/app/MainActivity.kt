@@ -47,7 +47,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtzinstaller.app.data.ThemeInstaller
 import com.mtzinstaller.app.ui.components.FloatingNavBar
+import com.mtzinstaller.app.ui.components.DownloadOverlay
 import com.mtzinstaller.app.ui.components.InstallOverlay
+import com.mtzinstaller.app.ui.components.InstalledSuccessCard
 import com.mtzinstaller.app.ui.components.SoftBusyOverlay
 import com.mtzinstaller.app.ui.components.NavTab
 import com.mtzinstaller.app.ui.components.PillButton
@@ -77,8 +79,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Pengguna mungkin baru saja mengembalikan aplikasi Tema ke versi pabrik
-        vm.refreshThemeStatus()
+        // Cek ulang status aplikasi Tema & tampilkan popup "tema terpasang" bila baru kembali dari Tema
+        vm.onAppResumed()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -162,6 +164,27 @@ fun MtzApp(vm: MainViewModel) {
                 Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 104.dp),
             ) { data ->
                 Snackbar(data, containerColor = MtzColors.Ink, contentColor = Color.White, shape = RoundedCornerShape(18.dp))
+            }
+
+            // Popup saat mengunduh dari Jelajah
+            vm.downloads.entries.firstOrNull()?.let { (id, progress) ->
+                DownloadOverlay(
+                    title = vm.downloadTitles[id] ?: "Tema",
+                    progress = progress,
+                    verifying = vm.downloadVerifying[id] == true,
+                    onCancel = { vm.cancelDownload(id) },
+                )
+            }
+
+            // Popup kartu "tema terpasang"
+            vm.successTheme?.let { t ->
+                InstalledSuccessCard(
+                    title = t.title,
+                    previewPath = t.previewPath,
+                    colorKey = t.id,
+                    onClose = { vm.successTheme = null },
+                    onOpenCollection = { vm.successTheme = null; tab = NavTab.Collection },
+                )
             }
         }
     }

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -229,10 +230,10 @@ fun ThemePreview(
 // ---------- Navigasi bawah melayang ----------
 
 enum class NavTab(val label: String, val icon: ImageVector) {
-    Home("Beranda", Icons.Filled.Home),
-    Browse("Jelajah", Icons.Filled.Search),
-    Collection("Koleksi", Icons.AutoMirrored.Filled.List),
-    Info("Info", Icons.Filled.Info),
+    Home("Beranda", NavIcons.Home),
+    Browse("Jelajah", NavIcons.Explore),
+    Collection("Koleksi", NavIcons.Collection),
+    Info("Bantuan", NavIcons.Profile),
 }
 
 @Composable
@@ -244,47 +245,63 @@ fun FloatingNavBar(
 ) {
     Row(
         modifier
-            .padding(horizontal = 18.dp)
+            .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .glass(RoundedCornerShape(30.dp))
-            .padding(horizontal = 6.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .glass(RoundedCornerShape(32.dp))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         NavTab.entries.forEachIndexed { index, tab ->
             if (index == 2 && onCenter != null) GlowOrb(onCenter)
-            val active = tab == current
-            val tint by animateColorAsState(if (active) MtzColors.Ink else MtzColors.Muted.copy(alpha = 0.8f), label = "navTint")
-            Column(
-                Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onSelect(tab) }
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(tab.icon, tab.label, tint = tint, modifier = Modifier.size(22.dp))
-                Text(tab.label, color = tint, style = MtzType.Caption.copy(fontSize = 11.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium))
+            NavItem(tab, active = tab == current) { onSelect(tab) }
+        }
+    }
+}
+
+@Composable
+private fun NavItem(tab: NavTab, active: Boolean, onClick: () -> Unit) {
+    val bg by animateColorAsState(if (active) MtzColors.Ink else Color.Transparent, tween(250), label = "navBg")
+    val tint by animateColorAsState(if (active) Color.White else MtzColors.Muted, tween(250), label = "navTint")
+    Row(
+        Modifier
+            .height(46.dp)
+            .clip(CircleShape)
+            .background(bg)
+            .clickable(onClick = onClick)
+            .animateContentSize(tween(250))
+            .padding(horizontal = if (active) 14.dp else 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            Icon(tab.icon, tab.label, tint = tint, modifier = Modifier.size(23.dp))
+            if (active) {
+                Box(Modifier.offset(x = 3.dp, y = (-2).dp).size(7.dp).clip(CircleShape).background(MtzColors.Neon))
             }
+        }
+        if (active) {
+            Spacer(Modifier.width(7.dp))
+            Text(tab.label, color = Color.White, style = MtzType.Label.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
         }
     }
 }
 
 /** Tombol bulat bercahaya di tengah navigasi (aksi cepat: impor .mtz). */
 @Composable
-fun GlowOrb(onClick: () -> Unit, size: Dp = 54.dp) {
+fun GlowOrb(onClick: () -> Unit, size: Dp = 56.dp) {
     val pulse = rememberInfiniteTransition(label = "orb")
-    val glow by pulse.animateFloat(0.25f, 0.55f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "glow")
+    val glow by pulse.animateFloat(0.25f, 0.6f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "glow")
     Box(
         Modifier
             .size(size)
             .shadow(18.dp, CircleShape, ambientColor = MtzColors.Blue.copy(alpha = glow), spotColor = MtzColors.Blue.copy(alpha = glow))
             .clip(CircleShape)
             .background(MtzColors.Orb)
-            .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+            .border(2.5.dp, MtzColors.Neon, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.Add, "Impor .mtz", tint = Color.White, modifier = Modifier.size(26.dp))
+        Icon(NavIcons.Plus, "Impor .mtz", tint = Color.White, modifier = Modifier.size(26.dp))
     }
 }
 

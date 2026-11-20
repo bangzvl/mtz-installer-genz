@@ -11,27 +11,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 object MtzColors {
-    // Gaya "sky glass": latar biru langit lembut, kartu putih kaca, aksen biru cerah
-    val Cream = Color(0xFFEFF5FF)      // permukaan terang (sheet, dialog)
-    val Ink = Color(0xFF0E1B3D)        // teks utama & tombol utama (navy pekat)
-    val Blue = Color(0xFF2E7CF6)       // aksen utama
-    val BlueDeep = Color(0xFF0B3D91)
-    val BlueSoft = Color(0xFF9CC8FF)
+    // Gaya "lavender glass": latar lavender lembut, kartu putih kaca, aksen ungu + neon dari logo
+    val Cream = Color(0xFFF1F0FF)      // permukaan terang (sheet, dialog)
+    val Ink = Color(0xFF15161B)        // teks utama & tombol utama (hitam logo)
+    val Blue = Color(0xFF6E4BFF)       // aksen utama (ungu logo)
+    val BlueDeep = Color(0xFF3B23B8)
+    val BlueSoft = Color(0xFFB9A8FF)
+    val Neon = Color(0xFFD4FF3A)       // hijau neon logo
     val Coral = Color(0xFFFF8A6B)
     val Sun = Color(0xFFFFC94D)
     val Mint = Color(0xFF4FD1A5)
     val Sky = Color(0xFF5AA9FF)
     val Lilac = Color(0xFF9B8CFF)
     val Peach = Color(0xFFFFB36B)
-    val Muted = Color(0xFF6B7A99)
-    val Line = Color(0xFFE3ECFA)
-    val Lime = Color(0xFFDCEBFF)       // tombol sekunder: biru muda + teks navy
+    val Muted = Color(0xFF6E6A86)
+    val Line = Color(0xFFE6E3F7)
+    val Lime = Color(0xFFEAE5FF)       // tombol sekunder: lavender muda + teks ungu
     val Pink = Color(0xFFFF7EB3)
     val Glass = Color(0xD9FFFFFF)      // putih 85% untuk kartu kaca
-    val accents = listOf(Sky, Lilac, Coral, Mint, Pink, Sun, Peach, Blue)
+    val accents = listOf(Blue, Sky, Lilac, Coral, Mint, Pink, Sun, Peach)
 
-    val Background = Brush.verticalGradient(listOf(Color(0xFFC9E0FF), Color(0xFFE6F0FF), Color(0xFFF6F9FF)))
-    val Orb = Brush.radialGradient(listOf(Color(0xFF9CD2FF), Color(0xFF3D8BFF), Color(0xFF0B3D91)))
+    val Background = Brush.verticalGradient(listOf(Color(0xFFD9D3FF), Color(0xFFECEAFF), Color(0xFFF8F8FF)))
+    val Orb = Brush.radialGradient(listOf(Color(0xFFC9BBFF), Color(0xFF6E4BFF), Color(0xFF2A1A7A)))
 }
 
 /** Gradien ikon kategori (gaya ubin warna-warni di desain). */

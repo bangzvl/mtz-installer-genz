@@ -1,6 +1,9 @@
 package com.mtzinstaller.app.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.res.painterResource
+import com.mtzinstaller.app.R
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,10 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mtzinstaller.app.data.MtzTheme
 import com.mtzinstaller.app.ui.components.CircleIconButton
-import com.mtzinstaller.app.ui.components.CountChip
 import com.mtzinstaller.app.ui.components.NavTab
 import com.mtzinstaller.app.ui.components.PillButton
-import com.mtzinstaller.app.ui.components.QuickAction
 import com.mtzinstaller.app.ui.components.SectionTitle
 import com.mtzinstaller.app.ui.components.Sticker
 import com.mtzinstaller.app.ui.components.ThemePreview
@@ -69,36 +70,35 @@ fun HomeScreen(
         Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(bottom = 130.dp),
     ) {
-        // Sapaan
+        // Sapaan + logo
         item {
             Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp),
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    Modifier.size(46.dp).neo(CircleShape).clip(CircleShape).background(MtzColors.Orb),
-                    contentAlignment = Alignment.Center,
-                ) { Text("🎨", fontSize = 22.sp) }
+                Image(
+                    painterResource(R.drawable.app_logo),
+                    contentDescription = "Logo",
+                    modifier = Modifier.size(46.dp).neo(RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp)),
+                )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("${greeting()} 👋", style = MtzType.Caption, color = MtzColors.Muted)
                     Text("MTZ Installer gen Z", style = MtzType.Heading, maxLines = 1)
                 }
-                CountChip("📦", themes.size)
             }
         }
 
-        // Ubin aksi cepat
-        item {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                item { QuickAction("➕", "Impor", MtzColors.Blue, onImport) }
-                item { QuickAction("🔍", "Jelajah", MtzColors.Lilac) { onNavigate(NavTab.Browse) } }
-                item { QuickAction("🗂️", "Koleksi", MtzColors.Mint) { onNavigate(NavTab.Collection) } }
-                item { QuickAction("❤️", "Favorit", MtzColors.Pink) { onNavigate(NavTab.Collection) } }
-                item { QuickAction("💡", "Bantuan", MtzColors.Sun) { onNavigate(NavTab.Info) } }
+        // Kartu sorotan (tema terbaru, besar)
+        themes.firstOrNull()?.let { spot ->
+            item {
+                SpotlightCard(
+                    spot,
+                    onOpen = { onOpen(spot) },
+                    onInstall = { onInstall(spot) },
+                    onToggleFavorite = { onToggleFavorite(spot) },
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                )
             }
         }
 
@@ -161,7 +161,7 @@ fun HomeScreen(
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    items(themes.take(10), key = { it.id }) { theme ->
+                    items(themes.drop(1).ifEmpty { themes }.take(10), key = { it.id }) { theme ->
                         FeatureCard(theme, onOpen = { onOpen(theme) }, onToggleFavorite = { onToggleFavorite(theme) })
                     }
                 }
@@ -182,6 +182,69 @@ fun HomeScreen(
                 } else {
                     recentInstalled.take(5).forEach { theme ->
                         RecentRow(theme, onOpen = { onOpen(theme) }, onInstall = { onInstall(theme) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpotlightCard(
+    theme: MtzTheme,
+    onOpen: () -> Unit,
+    onInstall: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(30.dp)
+    val accent = accentFor(theme.id)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(330.dp)
+            .neo(shape, shadow = accent)
+            .clip(shape)
+            .clickable(onClick = onOpen),
+    ) {
+        ThemePreview(theme.previewPath, theme.title, accent, Modifier.fillMaxSize(), RoundedCornerShape(0.dp))
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color(0xE015161B)),
+            ),
+        )
+        // Label kiri atas
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.clip(CircleShape).background(MtzColors.Neon).padding(horizontal = 10.dp, vertical = 5.dp)) {
+                Text("✦ Sorotan", style = MtzType.Caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), color = MtzColors.Ink)
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.85f)).padding(horizontal = 10.dp, vertical = 5.dp)) {
+                Text(if (theme.version == "-") "MTZ" else "v${theme.version}", style = MtzType.Caption, color = MtzColors.Ink)
+            }
+        }
+        // Tombol vertikal kanan (gaya kartu di desain referensi)
+        Column(
+            Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CircleIconButton(
+                if (theme.favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                "Favorit", onToggleFavorite, container = Color.White.copy(alpha = 0.85f), tint = MtzColors.Pink, size = 42.dp,
+            )
+            Box(
+                Modifier.size(42.dp).clip(CircleShape).background(MtzColors.Orb).clickable(onClick = onInstall),
+                contentAlignment = Alignment.Center,
+            ) { Text("⚡", fontSize = 18.sp) }
+        }
+        Column(Modifier.align(Alignment.BottomStart).padding(18.dp).padding(end = 60.dp)) {
+            Text(theme.title, style = MtzType.Title.copy(fontSize = 26.sp), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("oleh ${theme.author}", style = MtzType.Caption, color = Color.White.copy(alpha = 0.85f), maxLines = 1)
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("🎨 Tema", "📦 ${com.mtzinstaller.app.ui.components.formatSize(theme.sizeBytes)}", "⚡ ${theme.installCount}x").forEach {
+                    Box(Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.18f)).padding(horizontal = 10.dp, vertical = 5.dp)) {
+                        Text(it, style = MtzType.Caption, color = Color.White)
                     }
                 }
             }

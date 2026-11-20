@@ -18,7 +18,9 @@ import com.mtzinstaller.app.data.MtzParser
 import com.mtzinstaller.app.data.MtzTheme
 import com.mtzinstaller.app.data.ThemeInstaller
 import com.mtzinstaller.app.data.ThemeStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,15 +99,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         runDownload(item, headers)
     }
 
+    /** Judul file yang sedang diunduh (untuk popup unduhan). */
+    val downloadTitles = mutableStateMapOf<String, String>()
+    /** id unduhan yang sedang memeriksa isi file setelah selesai diunduh. */
+    val downloadVerifying = mutableStateMapOf<String, Boolean>()
+    private val downloadJobs = mutableMapOf<String, Job>()
+
+    fun cancelDownload(id: String) {
+        downloadJobs[id]?.cancel()
+    }
+
     private fun runDownload(item: CatalogItem, headers: Map<String, String>) {
         if (item.id in downloads) return
         downloads[item.id] = 0f
-        viewModelScope.launch {
+        downloadTitles[item.id] = item.title
+        val job = viewModelScope.launch {
             val ctx = getApplication<Application>()
             val tmp = File(ctx.cacheDir, "dl_${item.id.hashCode()}.mtz")
             try {
                 val theme = withContext(Dispatchers.IO) {
-                    CatalogRepository.download(item.downloadUrl, tmp, headers) { p -> downloads[item.id] = p }
+                    val self = coroutineContext[Job]
+                    CatalogRepository.download(
+                        item.downloadUrl, tmp, headers,
+                        isCancelled = { self?.isActive == false },
+                    ) { p -> downloads[item.id] = p }
+                    downloadVerifying[item.id] = true
                     importFile(tmp, "${item.title}.mtz", item)
                 }
                 _themes.value.filter { it.sourceId == item.id }.forEach { old ->
@@ -114,7 +132,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 update { listOf(theme) + it.filterNot { t -> t.sourceId == item.id } }
                 selectedId = theme.id
-                _messages.tryEmit("\"${theme.title}\" berhasil diunduh")
+                _messages.tryEmit("\"${theme.title}\" berhasil diunduh ke Koleksi")
+            } catch (e: CancellationException) {
+                _messages.tryEmit("Unduhan dibatalkan")
             } catch (e: MtzParser.InvalidMtzException) {
                 _messages.tryEmit(e.message ?: "File tidak valid")
             } catch (e: Exception) {
@@ -122,7 +142,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } finally {
                 tmp.delete()
                 downloads.remove(item.id)
+                downloadTitles.remove(item.id)
+                downloadVerifying.remove(item.id)
+                downloadJobs.remove(item.id)
             }
+        }
+        downloadJobs[item.id] = job
+    }
+
+    // ---------- Popup "tema terpasang" ----------
+    /** Tema yang baru dikirim ke aplikasi Tema; popup muncul saat pengguna kembali ke aplikasi ini. */
+    private var awaitingReturnFor: MtzTheme? = null
+    var successTheme by mutableStateOf<MtzTheme?>(null)
+
+    fun onAppResumed() {
+        refreshThemeStatus()
+        awaitingReturnFor?.let {
+            successTheme = _themes.value.firstOrNull { t -> t.id == it.id } ?: it
+            awaitingReturnFor = null
         }
     }
 
@@ -188,6 +225,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 if (ok) {
+                    awaitingReturnFor = theme
                     val now = System.currentTimeMillis()
                     update { list ->
                         list.map {
